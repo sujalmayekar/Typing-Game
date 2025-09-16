@@ -1,18 +1,23 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import axios from 'axios'; // Import axios for API requests
 import Stats from '../components/Stats';
 import TypingArea from '../components/TypingArea';
 import RacingTrack from '../components/RacingTrack';
 import Results from '../components/Results';
 
+// The API base URL for your backend server
+const API_URL = 'http://localhost:5001';
+
+// This function now fetches text from your backend
 const fetchAIText = async (level) => {
-    const texts = {
-        Beginner: "The sun always shines brightest after the rain.",
-        Intermediate: "A calm sea does not make a skilled sailor. Face challenges to grow stronger.",
-        Advanced: "The intricate tapestry of the cosmos is woven with threads of stardust and cosmic winds.",
-        Expert: "Metaphysical concepts such as ontology and epistemology are foundational to philosophical inquiry."
-    };
-    await new Promise(resolve => setTimeout(resolve, 200));
-    return texts[level] || texts.Beginner;
+    try {
+        const response = await axios.get(`${API_URL}/api/text/${level}`);
+        return response.data.text;
+    } catch (error) {
+        console.error("Error fetching AI text:", error);
+        // Return a default text if the API call fails
+        return "The server seems to be offline. Please try again later.";
+    }
 };
 
 const levels = ['Beginner', 'Intermediate', 'Advanced', 'Expert'];
@@ -108,8 +113,6 @@ export default function Game() {
         return () => clearInterval(timerIntervalRef.current);
     }, [gameStatus, endGame]);
     
-    // **FIX:** The entire input handling logic has been refactored to be more robust.
-    // This solves the accuracy glitch and the incorrect red highlighting issue.
     const handleInputChange = (value) => {
         if (gameStatus === 'finished' || !textToType || textToType === 'Loading...') return;
         
@@ -143,7 +146,7 @@ export default function Game() {
         setAccuracy(currentLength > 0 ? Math.round((correctChars / currentLength) * 100) : 100);
         setWpm(minutes > 0 ? Math.round((correctChars / 5) / minutes) : 0);
 
-        if (currentLength === textToType.length) {
+        if (value.length === textToType.length) {
             endGame(true);
         }
     };
@@ -178,4 +181,3 @@ export default function Game() {
         </div>
     );
 }
-
