@@ -1,24 +1,27 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import axios from 'axios'; // Import axios for API requests
+import axios from 'axios'; // Make sure axios is imported
 import Stats from '../components/Stats';
 import TypingArea from '../components/TypingArea';
 import RacingTrack from '../components/RacingTrack';
 import Results from '../components/Results';
 
-// The API base URL for your backend server
-const API_URL = 'http://localhost:5001';
-
-// This function now fetches text from your backend
+// This function now correctly calls your backend
 const fetchAIText = async (level) => {
+    const API_URL = 'http://localhost:5001/api/text';
     try {
-        const response = await axios.get(`${API_URL}/api/text/${level}`);
-        return response.data.text;
+        const response = await axios.get(`${API_URL}?level=${level}`);
+        if (response.data && response.data.text) {
+            return response.data.text;
+        }
+        // This will be returned if the server response is malformed
+        return "Server responded without text. Please check server logs.";
     } catch (error) {
         console.error("Error fetching AI text:", error);
-        // Return a default text if the API call fails
+        // This will be displayed in the typing area if the server is offline or errors out
         return "The server seems to be offline. Please try again later.";
     }
 };
+
 
 const levels = ['Beginner', 'Intermediate', 'Advanced', 'Expert'];
 const levelIndex = { Beginner: 0, Intermediate: 1, Advanced: 2, Expert: 3 };
@@ -42,10 +45,10 @@ export default function Game() {
     userInputRef.current = userInput;
 
     const endGame = useCallback((completedSuccessfully) => {
-        if (gameStatus === 'finished') return; 
+        if (gameStatus === 'finished') return;
         setGameStatus('finished');
         clearInterval(timerIntervalRef.current);
-        
+
         const finalInput = userInputRef.current;
         const timeElapsed = gameStartTimeRef.current ? Math.round((Date.now() - gameStartTimeRef.current) / 1000) : 0;
 
@@ -101,7 +104,7 @@ export default function Game() {
         timerIntervalRef.current = setInterval(() => {
             const timeElapsed = Math.round((Date.now() - gameStartTimeRef.current) / 1000);
             const timeRemaining = TIME_LIMIT - timeElapsed;
-            
+
             if (timeRemaining <= 0) {
                 setTimer(0);
                 endGame(false);
@@ -112,10 +115,10 @@ export default function Game() {
 
         return () => clearInterval(timerIntervalRef.current);
     }, [gameStatus, endGame]);
-    
+
     const handleInputChange = (value) => {
         if (gameStatus === 'finished' || !textToType || textToType === 'Loading...') return;
-        
+
         if (gameStatus === 'waiting' && value.length > 0) {
             setGameStatus('started');
             gameStartTimeRef.current = Date.now();
@@ -142,11 +145,11 @@ export default function Game() {
 
         const timeElapsed = (Date.now() - gameStartTimeRef.current) / 1000;
         const minutes = timeElapsed / 60;
-        
+
         setAccuracy(currentLength > 0 ? Math.round((correctChars / currentLength) * 100) : 100);
         setWpm(minutes > 0 ? Math.round((correctChars / 5) / minutes) : 0);
 
-        if (value.length === textToType.length) {
+        if (currentLength === textToType.length) {
             endGame(true);
         }
     };
@@ -181,3 +184,4 @@ export default function Game() {
         </div>
     );
 }
+

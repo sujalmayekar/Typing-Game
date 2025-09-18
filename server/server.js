@@ -1,74 +1,75 @@
 import express from 'express';
-import mongoose from 'mongoose';
 import cors from 'cors';
+import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// Load environment variables from .env file
 dotenv.config();
 
 const app = express();
-const port = process.env.PORT || 5001;
+const PORT = process.env.PORT || 5001;
+
+// --- Initialize Google Gemini Client ---
+// The client looks for the GEMINI_API_KEY in your .env file
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // --- Middleware ---
 app.use(cors());
 app.use(express.json());
 
-// --- REMOVED OPENAI API ---
-// We no longer need to connect to the OpenAI service.
-
 // --- MongoDB Connection ---
-// We keep this for when we add user accounts and leaderboards later.
 mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log('Successfully connected to MongoDB'))
-  .catch(err => console.error('MongoDB connection error:', err));
+    .then(() => console.log("Successfully connected to MongoDB"))
+    .catch(err => console.error("MongoDB connection error:", err));
 
-// --- Pre-defined Text Bank (Free Alternative) ---
-const textBank = {
-    Beginner: [
-        "The sun is very bright today.",
-        "A journey of a thousand miles begins with a single step.",
-        "An apple a day keeps the doctor away.",
-        "The early bird catches the worm.",
-        "Never give up on your dreams.",
-    ],
-    Intermediate: [
-        "Success is not the key to happiness. Happiness is the key to success.",
-        "The best way to predict the future is to create it yourself.",
-        "Technology has advanced rapidly over the last few decades.",
-        "To be yourself in a world that is constantly trying to make you something else is the greatest accomplishment.",
-    ],
-    Advanced: [
-        "The philosophical intricacies of existentialism challenge our perceptions of freedom and responsibility.",
-        "In the realm of quantum mechanics, particles can exist in multiple states simultaneously, a phenomenon known as superposition.",
-        "Cryptocurrency represents a paradigm shift in financial technology, utilizing decentralized blockchain networks for security.",
-    ],
-    Expert: [
-        "Bioinformatics algorithms are crucial for analyzing voluminous genomic datasets to identify genetic markers for diseases.",
-        "The geopolitical ramifications of global climate change necessitate international cooperation on unprecedented scales.",
-        "Metacognition, the awareness of one's own thought processes, is a cornerstone of effective learning and problem-solving strategies.",
-    ]
+// --- Text Generation Logic ---
+const getTextForLevel = async (level) => {
+    let prompt;
+    // The prompts work just as well for Gemini
+    switch (level) {
+        case 'Beginner':
+            prompt = "Generate one simple, encouraging sentence that is easy to type. Around 10-15 words.";
+            break;
+        case 'Intermediate':
+            prompt = "Generate a single, interesting sentence that is moderately complex. Around 20-25 words.";
+            break;
+        case 'Advanced':
+            prompt = "Generate two connected sentences on a topic like science or history. Total around 30-40 words.";
+            break;
+        case 'Expert':
+            prompt = "Generate two or three complex, connected sentences with varied punctuation and vocabulary on a technical topic. Total around 45-60 words.";
+            break;
+        default:
+            prompt = "Generate one simple sentence. Around 10 words.";
+            break;
+    }
+
+    try {
+        // **FIX:** Updated model name from "gemini-pro" to the current version "gemini-1.5-flash-latest"
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const text = response.text();
+        return text;
+    } catch (error) {
+        console.error("Error fetching text from Google Gemini API:", error.message);
+        return "The server is online, but there was an issue with the AI text generator.";
+    }
 };
 
 // --- API Routes ---
-
-/**
- * @route   GET /api/text/:level
- * @desc    Gets a random typing challenge text from the local text bank
- * @access  Public
- */
-app.get('/api/text/:level', (req, res) => {
-    const { level } = req.params;
-    const textsForLevel = textBank[level] || textBank.Beginner;
-    
-    // Pick a random text from the array for the given level
-    const randomIndex = Math.floor(Math.random() * textsForLevel.length);
-    const text = textsForLevel[randomIndex];
-
-    res.json({ text });
+app.get('/api/text', async (req, res) => {
+    try {
+        const { level = 'Beginner' } = req.query;
+        const text = await getTextForLevel(level);
+        res.json({ text });
+    } catch (error) {
+        res.status(500).json({ message: 'Failed to fetch text', error: error.message });
+    }
 });
 
-// --- Start Server ---
-app.listen(port, () => {
-    console.log(`Server is running on port: ${port}`);
+// --- Server Start ---
+app.listen(PORT, () => {
+    console.log(`Server is running on port: ${PORT}`);
 });
 
