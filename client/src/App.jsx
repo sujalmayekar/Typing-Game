@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import Game from './pages/Game.jsx';
-import Leaderboard from './pages/Leaderboard.jsx';
-import History from './pages/History.jsx';
-import Header from './components/Header.jsx';
-import LandingPage from './pages/LandingPage.jsx';
-import LoginPage from './pages/LoginPage.jsx';
-import About from './pages/About.jsx';
+import Game from './pages/Game';
+import Leaderboard from './pages/Leaderboard';
+import History from './pages/History';
+import Header from './components/Header';
+import LandingPage from './pages/LandingPage';
+import LoginPage from './pages/LoginPage';
+import About from './pages/About';
+import Profile from './pages/Profile';
 import './App.css';
 
 export default function App() {
@@ -21,6 +22,8 @@ export default function App() {
                 return <Leaderboard />;
             case 'history':
                 return <History />;
+            case 'profile':
+                return <Profile />;
             case 'about':
                 return <About />;
             case 'game':
@@ -34,9 +37,9 @@ export default function App() {
 
     return (
         <div className="app-container">
-            {showHeader && <Header currentPage={page} setPage={setPage} />}
+            {/* Set isLoggedIn to true to demonstrate profile access */}
+            {showHeader && <Header currentPage={page} setPage={setPage} isLoggedIn={true} />}
             <main className="main-content">{renderPage()}</main>
         </div>
     );
 }
-
