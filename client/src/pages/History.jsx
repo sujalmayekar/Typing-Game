@@ -12,30 +12,26 @@ export default function History() {
     ];
 
     return (
-        <div className="leaderboard-container">
-            <h1 className="leaderboard-title">My Game History</h1>
-            <div className="table-wrapper">
-                <table className="leaderboard-table">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>WPM</th>
-                            <th>Accuracy</th>
-                            <th>Mode</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {MOCK_HISTORY.map((entry, index) => (
-                            <tr key={index}>
-                                <td>{entry.date}</td>
-                                <td>{entry.wpm}</td>
-                                <td>{entry.accuracy}%</td>
-                                <td>{entry.mode}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+        <div className="placeholder-page leaderboard-container">
+            <h1>My Game History</h1>
+            <p>Review your past performances to see how you've improved.</p>
+            <div className="leaderboard-table">
+                <div className="leaderboard-header history-header">
+                    <div>Date</div>
+                    <div>WPM</div>
+                    <div>Accuracy</div>
+                    <div>Mode</div>
+                </div>
+                {MOCK_HISTORY.map((entry, index) => (
+                    <div className="leaderboard-row history-row" key={index}>
+                        <div>{entry.date}</div>
+                        <div>{entry.wpm}</div>
+                        <div>{entry.accuracy}%</div>
+                        <div>{entry.mode}</div>
+                    </div>
+                ))}
             </div>
         </div>
     );
 }
+

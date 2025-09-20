@@ -47,7 +47,7 @@ export default function Header({ currentPage, setPage, isLoggedIn }) {
                 </button>
                  <button
                     className={currentPage === 'about' ? 'active' : ''}
-                    onClick={() => setPage('About')}
+                    onClick={() => setPage('about')}
                 >
                     About
                 </button>

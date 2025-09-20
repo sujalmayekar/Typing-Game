@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import Game from './pages/Game';
-import Leaderboard from './pages/Leaderboard';
-import History from './pages/History';
-import Header from './components/Header';
-import LandingPage from './pages/LandingPage';
-import LoginPage from './pages/LoginPage';
+import Game from './pages/Game.jsx';
+import Leaderboard from './pages/Leaderboard.jsx';
+import History from './pages/History.jsx';
+import Header from './components/Header.jsx';
+import LandingPage from './pages/LandingPage.jsx';
+import LoginPage from './pages/LoginPage.jsx';
+import About from './pages/About.jsx';
 import './App.css';
 
 export default function App() {
@@ -20,6 +21,8 @@ export default function App() {
                 return <Leaderboard />;
             case 'history':
                 return <History />;
+            case 'about':
+                return <About />;
             case 'game':
             default:
                 return <Game />;
@@ -36,3 +39,4 @@ export default function App() {
         </div>
     );
 }
+
