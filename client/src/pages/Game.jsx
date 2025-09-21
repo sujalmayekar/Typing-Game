@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios'; // Make sure axios is imported
 import Stats from '../components/Stats';
-import TypingArea from '../components/TypingArea';
+// We are using the scrolling component now
+import ScrollingTypingArea from '../components/ScrollingTypingArea';
 import RacingTrack from '../components/RacingTrack';
 import Results from '../components/Results';
 import './Game.css';
@@ -19,7 +20,7 @@ const fetchAIText = async (level) => {
     } catch (error) {
         console.error("Error fetching AI text:", error);
         // This will be displayed in the typing area if the server is offline or errors out
-        return "The server seems to be offline. Please try again later.";
+        return "The server seems to be offline. Please try again later";
     }
 };
 
@@ -175,7 +176,8 @@ export default function Game() {
             {finalStats && <Results stats={finalStats} onRestart={handleRestart} onNextLevel={handleNextLevel} canAdvance={canAdvance} />}
             <RacingTrack progress={progress} errorState={errorState} />
             <Stats timer={timer} gameStatus={gameStatus} />
-            <TypingArea textToType={textToType} userInput={userInput} onInputChange={handleInputChange} gameStatus={gameStatus} />
+            {/* The simple structure is restored, now using the scrolling component */}
+            <ScrollingTypingArea textToType={textToType} userInput={userInput} onInputChange={handleInputChange} gameStatus={gameStatus} />
             <div className="level-selector">
                 {levels.map((lvl) => {
                     const isUnlocked = levelIndex[lvl] <= levelIndex[unlockedLevel];
@@ -185,3 +187,4 @@ export default function Game() {
         </div>
     );
 }
+

@@ -1,0 +1,54 @@
+/* This new, dedicated stylesheet contains the definitive logic 
+  for the MonkeyType scrolling effect.
+*/
+
+.typing-area-container {
+    position: relative;
+    cursor: text;
+    text-align: left;
+}
+
+/* 1. The main container for the typing text */
+.typing-area-display {
+    background-color: var(--surface-color);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--border-color);
+    user-select: none;
+    
+    /* CRITICAL: A fixed height that shows two lines of text */
+    height: 7rem; 
+    
+    /* CRITICAL: Hides the text that overflows the container */
+    overflow: hidden; 
+
+    /* CRITICAL: This is the padding that ensures the text doesn't stick to the edges */
+    padding: 1.5rem 2.5rem;
+}
+
+/* 2. The inner wrapper that will be moved to create the scroll effect */
+.text-scroll-wrapper {
+    /* This transition creates the smooth scrolling animation */
+    transition: margin-top 0.2s ease-in-out;
+}
+
+/* 3. The hidden textarea that captures user input */
+.typing-textarea {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    border: none;
+    outline: none;
+    resize: none;
+    color: transparent;
+    background: transparent;
+    
+    /* These properties must match the display text for accurate cursor positioning */
+    font-family: var(--font-mono);
+    font-size: 1.5rem;
+    line-height: 2;
+    padding: 1.5rem 2.5rem;
+    letter-spacing: 0.5px;
+}

@@ -39,7 +39,9 @@ export default function App() {
         <div className="app-container">
             {/* Set isLoggedIn to true to demonstrate profile access */}
             {showHeader && <Header currentPage={page} setPage={setPage} isLoggedIn={true} />}
-            <main className="main-content">{renderPage()}</main>
+            {/* A conditional class is added here to specifically target the game page layout */}
+            <main className={`main-content ${page === 'game' ? 'game-active' : ''}`}>{renderPage()}</main>
         </div>
     );
 }
+

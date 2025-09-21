@@ -59,10 +59,17 @@ body {
     flex-grow: 1;
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: center; /* Default alignment for all pages */
     padding: 4rem 2rem;
     animation: fadeIn 1s var(--transition-smooth);
 }
+
+/* This is the critical override that fixes the gap on the game page */
+.main-content.game-active {
+    align-items: flex-start; /* Aligns the game container to the top */
+    padding-top: 2.5rem; /* Adds a smaller, specific padding for the game */
+}
+
 
 /* 3. SHARED COMPONENTS & ATOMS */
 /* =================================== */
@@ -109,7 +116,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1.5rem 2rem;
+    padding: 1.2rem 2rem; /* Reduced padding for a shorter header */
     border-bottom: 1px solid var(--border-color);
     position: sticky;
     top: 0;
@@ -301,7 +308,7 @@ body {
 }
 .stat-item {
     background-color: var(--surface-color);
-    padding: 1.5rem;
+    padding: 1rem; /* Reduced padding */
     border-radius: var(--border-radius);
     text-align: center;
     border: 1px solid var(--border-color);
@@ -338,7 +345,8 @@ body {
     font-family: var(--font-mono);
     font-size: 1.5rem;
     line-height: 2;
-    padding: 2.5rem;
+    /* This padding is CRITICAL for the left margin and top starting position */
+    padding: 1.5rem 2.5rem; 
     letter-spacing: 0.5px;
     box-sizing: border-box;
     white-space: pre-wrap;
@@ -355,6 +363,10 @@ body {
 .char-correct { color: var(--text-secondary); transition: color 0.3s ease; }
 .char-incorrect { color: var(--error-color); background-color: var(--error-bg); border-radius: 4px; }
 .char-default { color: #555; }
+/* This rule forces all text inside the typing area to use the correct font */
+.typing-area-display span {
+    font-family: var(--font-mono) !important;
+}
 .cursor {
     display: inline-block;
     width: 3px;
