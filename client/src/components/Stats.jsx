@@ -1,20 +1,18 @@
 import React from 'react';
 
-export default function Stats({ timer, wpm, accuracy }) {
-    return (
-        <div className="stats-container">
-            <div className="stat-item">
-                <div className="label">Time</div>
-                <div className="value">{timer}s</div>
+export default function Stats({ timer, gameStatus }) {
+    // Show the simplified timer before the game starts ('waiting') 
+    // and while it is ongoing ('started').
+    if (gameStatus === 'waiting' || gameStatus === 'started') {
+        return (
+            <div className="stats-container-storyboard">
+                Time: {timer}
             </div>
-            <div className="stat-item">
-                <div className="label">WPM</div>
-                <div className="value">{wpm}</div>
-            </div>
-            <div className="stat-item">
-                <div className="label">Accuracy</div>
-                <div className="value">{accuracy}%</div>
-            </div>
-        </div>
-    );
+        );
+    }
+
+    // When the game is finished, the Results modal shows all the stats,
+    // so we render nothing from this component.
+    return null;
 }
+

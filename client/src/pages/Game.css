@@ -1,0 +1,65 @@
+/*
+  Specific styles for the Game page to match the storyboard layout.
+  These styles override some defaults from App.css but only apply
+  when the .storyboard class is present on .game-container.
+*/
+
+.game-container.storyboard {
+    max-width: 1000px;
+    width: 90%;
+    
+    /* Use negative margin to counteract global padding and fix the header gap */
+    margin: -1.5rem auto 0; 
+    
+    /* Use flexbox to control layout and spacing precisely */
+    display: flex;
+    flex-direction: column;
+    gap: 1rem; /* Tighter gap between components */
+    
+    padding: 0; /* Reset padding and rely on gap */
+    text-align: center;
+}
+
+/* 1. RacingTrack placeholder styles */
+.racing-track-storyboard {
+    width: 100%;
+    height: 40vh; /* Reduced height to lift components below */
+    min-height: 280px; /* Adjusted min-height */
+    background-color: #1a1a1a; /* Dark surface color from storyboard */
+    border-radius: 24px; /* Soft, rounded corners */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #5a5a62; /* Muted text color */
+    font-family: var(--font-mono);
+    font-size: 1.5rem;
+    border: 1px solid var(--border-color);
+}
+
+/* 2. Stats container styles for "in-game" view */
+.stats-container-storyboard {
+    color: var(--text-secondary);
+    font-size: 1.25rem;
+    font-family: var(--font-mono);
+    margin: 0; /* Remove margin, use gap for spacing */
+}
+
+/* 3. Increase TypingArea size */
+.game-container.storyboard .typing-area-container {
+    width: 100%;
+}
+
+.game-container.storyboard .typing-area-display {
+    height: 20vh; /* Reduced height */
+    min-height: 150px; /* Adjusted min-height */
+    font-size: 1.5rem; /* Keep font size as per original */
+    line-height: 2;
+    padding: 2.5rem;
+    border-radius: 24px; /* Matching rounded corners */
+}
+
+/* 4. Level selector readjustment */
+.game-container.storyboard .level-selector {
+    margin-top: 0; /* Remove margin, use gap for spacing */
+}
+

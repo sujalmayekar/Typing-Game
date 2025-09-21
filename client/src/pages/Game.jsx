@@ -4,6 +4,7 @@ import Stats from '../components/Stats';
 import TypingArea from '../components/TypingArea';
 import RacingTrack from '../components/RacingTrack';
 import Results from '../components/Results';
+import './Game.css';
 
 // This function now correctly calls your backend
 const fetchAIText = async (level) => {
@@ -36,8 +37,8 @@ export default function Game() {
     const [timer, setTimer] = useState(TIME_LIMIT);
     const [wpm, setWpm] = useState(0);
     const [accuracy, setAccuracy] = useState(100);
-    const [errorState, setErrorState] = useState(false);
     const [finalStats, setFinalStats] = useState(null);
+    const [errorState, setErrorState] = useState(false); // <-- State for tracking errors
     const timerIntervalRef = useRef(null);
     const gameStartTimeRef = useRef(null);
 
@@ -124,6 +125,13 @@ export default function Game() {
             gameStartTimeRef.current = Date.now();
         }
 
+        // Check for errors by comparing the input with the source text
+        if (textToType.startsWith(value)) {
+            setErrorState(false);
+        } else {
+            setErrorState(true);
+        }
+        
         setUserInput(value);
 
         if (!gameStartTimeRef.current) return;
@@ -134,13 +142,6 @@ export default function Game() {
             if (value[i] === textToType[i]) {
                 correctChars++;
             }
-        }
-
-        const lastCharIndex = currentLength - 1;
-        const isError = textToType[lastCharIndex] && value[lastCharIndex] !== textToType[lastCharIndex];
-        if (isError) {
-            setErrorState(true);
-            setTimeout(() => setErrorState(false), 400);
         }
 
         const timeElapsed = (Date.now() - gameStartTimeRef.current) / 1000;
@@ -164,16 +165,16 @@ export default function Game() {
             }
         }
     };
-
-    const correctCharCount = userInput.split('').filter((char, index) => char === textToType[index]).length;
-    const progress = textToType.length > 0 ? (correctCharCount / textToType.length) * 100 : 0;
+    
+    // Calculate progress based on user input length vs. total text length
+    const progress = textToType.length > 0 ? (userInput.length / textToType.length) * 100 : 0;
     const canAdvance = finalStats?.completed && finalStats?.accuracy >= 85 && levelIndex[level] < levels.length - 1;
 
     return (
-        <div className="game-container">
+        <div className="game-container storyboard">
             {finalStats && <Results stats={finalStats} onRestart={handleRestart} onNextLevel={handleNextLevel} canAdvance={canAdvance} />}
             <RacingTrack progress={progress} errorState={errorState} />
-            <Stats timer={timer} wpm={wpm} accuracy={accuracy} />
+            <Stats timer={timer} gameStatus={gameStatus} />
             <TypingArea textToType={textToType} userInput={userInput} onInputChange={handleInputChange} gameStatus={gameStatus} />
             <div className="level-selector">
                 {levels.map((lvl) => {
@@ -184,4 +185,3 @@ export default function Game() {
         </div>
     );
 }
-
