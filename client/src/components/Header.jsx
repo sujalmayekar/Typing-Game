@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function Header({ currentPage, setPage, isLoggedIn }) {
+export default function Header({ currentPage, setPage, isLoggedIn, handleLogout }) {
     return (
         <header className="site-header">
             <div className="header-left">
@@ -22,12 +22,14 @@ export default function Header({ currentPage, setPage, isLoggedIn }) {
                 >
                     Leaderboard
                 </button>
-                <button
-                    className={currentPage === 'history' ? 'active' : ''}
-                    onClick={() => setPage('history')}
-                >
-                    History
-                </button>
+                {isLoggedIn && (
+                    <button
+                        className={currentPage === 'history' ? 'active' : ''}
+                        onClick={() => setPage('history')}
+                    >
+                        History
+                    </button>
+                )}
                  <button
                     className={currentPage === 'about' ? 'active' : ''}
                     onClick={() => setPage('about')}
@@ -38,15 +40,23 @@ export default function Header({ currentPage, setPage, isLoggedIn }) {
 
             <div className="header-right">
                 {isLoggedIn ? (
-                    <button 
-                        className="btn btn-secondary" 
-                        onClick={() => setPage('profile')}
-                    >
-                        Profile
-                    </button>
+                    <>
+                        <button 
+                            className={`btn btn-secondary profile-btn ${currentPage === 'profile' ? 'active' : ''}`}
+                            onClick={() => setPage('profile')}
+                        >
+                            Profile
+                        </button>
+                         <button 
+                            className="btn btn-secondary logout-btn" 
+                            onClick={handleLogout}
+                        >
+                            Logout
+                        </button>
+                    </>
                 ) : (
-                    <button className="btn btn-login" onClick={() => setPage('login')}>
-                        Login
+                    <button className="btn btn-primary" onClick={() => setPage('login')}>
+                        Login / Sign Up
                     </button>
                 )}
             </div>

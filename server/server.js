@@ -3,6 +3,7 @@ import cors from 'cors';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import apiRoutes from './routes/api.js';
 
 dotenv.config();
 
@@ -21,7 +22,7 @@ mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log("Successfully connected to MongoDB"))
     .catch(err => console.error("MongoDB connection error:", err));
 
-// --- Text Generation Logic ---
+// --- Text Generation Logic (Unchanged) ---
 const getTextForLevel = async (level) => {
     let prompt;
     switch (level) {
@@ -47,12 +48,11 @@ const getTextForLevel = async (level) => {
         const result = await model.generateContent(prompt);
         const response = await result.response;
         
-        // **FIX:** Sanitize the text to remove invisible characters and unwanted formatting.
         const rawText = response.text();
         const cleanText = rawText
-            .trim() // Remove leading/trailing whitespace
-            .replace(/[\r\n]+/g, ' ') // Replace newlines with a single space
-            .replace(/^["']|["']$/g, ''); // Remove quotes from start/end of the string
+            .trim()
+            .replace(/[\r\n]+/g, ' ')
+            .replace(/^["']|["']$/g, '');
 
         return cleanText;
 
@@ -63,10 +63,10 @@ const getTextForLevel = async (level) => {
 };
 
 // --- API Routes ---
+
+// Text Generation Route (Kept separate for clarity)
 app.get('/api/text', async (req, res) => {
     try {
-        // **FIX:** Set headers to prevent the browser from caching the API response.
-        // This ensures a new text is fetched from the AI on every request.
         res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
         res.setHeader('Pragma', 'no-cache');
         res.setHeader('Expires', '0');
@@ -78,6 +78,10 @@ app.get('/api/text', async (req, res) => {
         res.status(500).json({ message: 'Failed to fetch text', error: error.message });
     }
 });
+
+// All other API routes (Auth, User, Game Data)
+app.use('/api', apiRoutes);
+
 
 // --- Server Start ---
 app.listen(PORT, () => {
