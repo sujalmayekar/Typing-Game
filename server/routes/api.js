@@ -99,7 +99,7 @@ router.get('/profile', authMiddleware, async (req, res) => {
             stats.avgAcc = Math.round(totalAcc / sessions.length);
         }
 
-        res.json({ user, stats, history: sessions }); 
+        res.json({ user, stats, history: sessions });
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server Error');
@@ -142,15 +142,29 @@ router.post('/game/save', authMiddleware, async (req, res) => {
 });
 
 // @route   GET /api/leaderboard
-// @desc    Get top 10 players based on level, wpm, and accuracy
+// @desc    Get top 10 players by their best performance
 // @access  Public
 router.get('/leaderboard', async (req, res) => {
     try {
-        // Aggregation pipeline for custom sorting
         const leaderboard = await GameSession.aggregate([
-            // 1. Get the best score for each user
+            {
+                $addFields: {
+                    levelScore: {
+                        $switch: {
+                            branches: [
+                                { case: { $eq: ["$level", "Expert"] }, then: 4 },
+                                { case: { $eq: ["$level", "Advanced"] }, then: 3 },
+                                { case: { $eq: ["$level", "Intermediate"] }, then: 2 },
+                                { case: { $eq: ["$level", "Beginner"] }, then: 1 }
+                            ],
+                            default: 0
+                        }
+                    }
+                }
+            },
             {
                 $sort: {
+                    levelScore: -1,
                     wpm: -1,
                     accuracy: -1
                 }
@@ -159,53 +173,55 @@ router.get('/leaderboard', async (req, res) => {
                 $group: {
                     _id: "$userId",
                     username: { $first: "$username" },
-                    bestWpm: { $first: "$wpm" },
-                    bestAccuracy: { $first: "$accuracy" },
-                    topLevel: { $first: "$level" }
+                    wpm: { $first: "$wpm" },
+                    accuracy: { $first: "$accuracy" },
+                    level: { $first: "$level" },
+                    date: { $first: "$date" } // <-- Add date of the top score
                 }
             },
-            // 2. Add a numeric score for level to allow proper sorting
-            {
-                $addFields: {
-                    levelScore: {
-                        $switch: {
-                            branches: [
-                                { case: { $eq: ["$topLevel", "Expert"] }, then: 4 },
-                                { case: { $eq: ["$topLevel", "Advanced"] }, then: 3 },
-                                { case: { $eq: ["$topLevel", "Intermediate"] }, then: 2 },
-                                { case: { $eq: ["$topLevel", "Beginner"] }, then: 1 }
-                            ],
-                            default: 0
-                        }
-                    }
-                }
-            },
-            // 3. Sort by the new criteria: level > wpm > accuracy
+            // Re-sort after grouping
             {
                 $sort: {
-                    levelScore: -1,
-                    bestWpm: -1,
-                    bestAccuracy: -1
+                    levelScore: -1, // This field is lost after $group, let's re-add it or sort differently
+                    wpm: -1,
+                    accuracy: -1
                 }
             },
-            // 4. Limit to the top 10 players
             { $limit: 10 },
-            // 5. Format the final output
             {
                 $project: {
                     _id: 0,
                     name: "$username",
-                    wpm: "$bestWpm",
-                    accuracy: "$bestAccuracy",
-                    level: "$topLevel"
+                    wpm: "$wpm",
+                    accuracy: "$accuracy",
+                    level: "$level",
+                    date: "$date" // <-- Project the date field
                 }
             }
         ]);
+        
+        // Re-add levelScore for final sort before slicing and ranking
+        const sortedLeaderboard = leaderboard.map(p => {
+             let levelScore = 0;
+             if (p.level === 'Expert') levelScore = 4;
+             else if (p.level === 'Advanced') levelScore = 3;
+             else if (p.level === 'Intermediate') levelScore = 2;
+             else if (p.level === 'Beginner') levelScore = 1;
+             return {...p, levelScore };
+        }).sort((a,b) => {
+            if (b.levelScore !== a.levelScore) return b.levelScore - a.levelScore;
+            if (b.wpm !== a.wpm) return b.wpm - a.wpm;
+            return b.accuracy - a.accuracy;
+        });
 
-        // Add rank to the results
-        const rankedLeaderboard = leaderboard.map((player, index) => ({
+
+        const rankedLeaderboard = sortedLeaderboard.map((player, index) => ({
             rank: index + 1,
-            ...player
+            name: player.name,
+            wpm: player.wpm,
+            accuracy: player.accuracy,
+            level: player.level,
+            date: player.date
         }));
         
         res.json(rankedLeaderboard);

@@ -39,19 +39,21 @@ export default function Leaderboard() {
             {leaderboard.length > 0 ? (
                 <div className="leaderboard-table">
                     <div className="leaderboard-header">
-                        <div>Rank</div>
-                        <div>Player</div>
-                        <div>WPM</div>
-                        <div>Accuracy</div>
-                        <div>Top Level</div>
+                        <div className="leaderboard-col-center">Rank</div>
+                        <div className="leaderboard-col-left">Player</div>
+                        <div className="leaderboard-col-center">WPM</div>
+                        <div className="leaderboard-col-center">Accuracy</div>
+                        <div className="leaderboard-col-center">Top Level</div>
+                        <div className="leaderboard-col-center">Date</div>
                     </div>
                     {leaderboard.map((player) => (
                         <div className="leaderboard-row" key={player.rank}>
-                            <div><span className={`rank-${player.rank}`}>{player.rank}</span></div>
-                            <div>{player.name}</div>
-                            <div>{player.wpm}</div>
-                            <div>{player.accuracy}%</div>
-                            <div>{player.level}</div>
+                            <div className="leaderboard-col-center"><span className={`rank-${player.rank}`}>{player.rank}</span></div>
+                            <div className="leaderboard-col-left">{player.name}</div>
+                            <div className="leaderboard-col-center">{player.wpm}</div>
+                            <div className="leaderboard-col-center">{player.accuracy}%</div>
+                            <div className="leaderboard-col-center">{player.level}</div>
+                            <div className="leaderboard-col-center">{new Date(player.date).toLocaleDateString()}</div>
                         </div>
                     ))}
                 </div>

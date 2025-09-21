@@ -33,6 +33,7 @@ export default function LoginPage({ setPage, onLogin }) {
                 ? err.response.data.message
                 : 'An error occurred. Please try again.';
             setError(errorMessage);
+        } finally {
             setLoading(false);
         }
     };
