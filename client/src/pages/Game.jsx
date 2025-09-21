@@ -20,7 +20,7 @@ const fetchAIText = async (level) => {
     } catch (error) {
         console.error("Error fetching AI text:", error);
         // This will be displayed in the typing area if the server is offline or errors out
-        return "The server seems to be offline. Please try again later";
+        return "I've updated the ScrollingTypingArea.jsx component to detect whether the text spans one or multiple lines. Based on that, it adds an is-centered class to the display box.";
     }
 };
 

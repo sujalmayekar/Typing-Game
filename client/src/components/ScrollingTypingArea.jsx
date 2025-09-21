@@ -87,6 +87,7 @@ export default function ScrollingTypingArea({ textToType, userInput, onInputChan
 
     return (
         <div className="typing-area-container" onClick={() => inputRef.current.focus()}>
+            {/* The class name is now static, removing the conditional centering logic */}
             <div className="typing-area-display shared-typing-style monkey-scroll">
                 <div ref={textWrapperRef} className="text-scroll-wrapper">
                     {renderText()}
