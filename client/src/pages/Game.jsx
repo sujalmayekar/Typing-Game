@@ -3,7 +3,7 @@ import axios from 'axios'; // Make sure axios is imported
 import Stats from '../components/Stats';
 // We are using the scrolling component now
 import ScrollingTypingArea from '../components/ScrollingTypingArea';
-import RacingTrack from '../components/RacingTrack';
+import PhaserPlaceHolder from '../components/PhaserPlaceHolder';
 import Results from '../components/Results';
 import './Game.css';
 
@@ -174,7 +174,7 @@ export default function Game() {
     return (
         <div className="game-container storyboard">
             {finalStats && <Results stats={finalStats} onRestart={handleRestart} onNextLevel={handleNextLevel} canAdvance={canAdvance} />}
-            <RacingTrack progress={progress} errorState={errorState} />
+            <PhaserPlaceHolder progress={progress} errorState={errorState} />
             <Stats timer={timer} gameStatus={gameStatus} />
             {/* The simple structure is restored, now using the scrolling component */}
             <ScrollingTypingArea textToType={textToType} userInput={userInput} onInputChange={handleInputChange} gameStatus={gameStatus} />
