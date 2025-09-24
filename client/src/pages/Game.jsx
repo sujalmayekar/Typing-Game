@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import Stats from '../components/Stats';
 import ScrollingTypingArea from '../components/ScrollingTypingArea';
-import PhaserPlaceHolder from '../components/PhaserPlaceHolder';
+import PhaserGame from '../components/PhaserGame';
 import Results from '../components/Results';
 import './Game.css';
 
@@ -174,7 +174,7 @@ export default function Game({ user, token }) {
     return (
         <div className="game-container storyboard">
             {finalStats && <Results stats={finalStats} onRestart={handleRestart} onNextLevel={handleNextLevel} canAdvance={canAdvance} />}
-            <PhaserPlaceHolder progress={progress} errorState={errorState} />
+            <PhaserGame progress={progress} errorState={errorState} />
             <Stats timer={timer} gameStatus={gameStatus} />
             <ScrollingTypingArea textToType={textToType} userInput={userInput} onInputChange={handleInputChange} gameStatus={gameStatus} />
             <div className="level-selector">

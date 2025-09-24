@@ -12,6 +12,7 @@ class GameScene extends Phaser.Scene {
         this.initialPlayerX = 0;
         this.targetPlayerX = 0;
         this.currentTypingStatus = 'idle'; // State managed within Phaser
+        this.isFinished = false; // Flag to control update loop during completion animation
     }
 
     preload() {
@@ -46,7 +47,8 @@ class GameScene extends Phaser.Scene {
         this.player.setScale(0.35);
         this.player.setOrigin(0.5, 0.5);
         this.targetPlayerX = this.initialPlayerX;
-        this.player.play('idle');
+        // FIX 1: Set a static texture on creation instead of playing the faulty idle animation.
+        this.player.setTexture('player-idle', 0);
     }
     
     // --- Methods called from React ---
@@ -56,58 +58,102 @@ class GameScene extends Phaser.Scene {
 
     setProgress(newProgress) {
         this.progress = newProgress;
-        const travelDistance = this.scale.width * 0.6;
+        const travelDistance = this.scale.width * 0.6; // The total distance the player will run
         this.targetPlayerX = this.initialPlayerX + (travelDistance * this.progress);
     }
     
     resetPlayer() {
+        this.isFinished = false; // Reset the finish flag
         this.progress = 0;
         if (this.player) {
             if (!this.scene.isActive()) return;
+            // Stop any running tweens to prevent conflicts
+            this.tweens.killTweensOf(this.player); 
+
+            // Reset position
             this.player.x = this.initialPlayerX;
             this.targetPlayerX = this.initialPlayerX;
-            this.player.play('idle');
             this.player.setVisible(true);
+
+            // FIX 2: On reset, stop all animations and set the static idle texture.
+            this.player.anims.stop();
+            this.player.setTexture('player-idle', 0);
+
+            // Reset background positions
+            this.background.tilePositionX = 0;
+            this.midground.tilePositionX = 0;
+            this.foreground.tilePositionX = 0;
         }
     }
 
     completeLevel() {
-        if (!this.player) return;
+        if (!this.player || !this.player.active || this.isFinished) return;
+        
+        this.isFinished = true; // Prevent update loop from interfering
+        this.player.play('run');
+
+        // Tween to the finish line to ensure the player arrives exactly at the end
         this.tweens.add({
             targets: this.player,
-            x: this.scale.width + this.player.width,
+            x: this.targetPlayerX,
             ease: 'Power1',
-            duration: 1000,
+            duration: 300, 
+            onUpdate: () => {
+                // Manually scroll the background during the final tween
+                const movementSinceLastFrame = this.player.x - (this.player.prevTweenedProps?.x || this.player.x);
+                this.background.tilePositionX += movementSinceLastFrame * 0.2;
+                this.midground.tilePositionX += movementSinceLastFrame * 0.5;
+                this.foreground.tilePositionX += movementSinceLastFrame * 0.8;
+            },
             onComplete: () => {
-                 if (this.player) this.player.setVisible(false);
+                // After reaching the finish line, tween off the screen
+                if (this.player) {
+                    this.tweens.add({
+                        targets: this.player,
+                        x: this.scale.width + this.player.width,
+                        ease: 'Power1',
+                        duration: 1000,
+                        onComplete: () => {
+                             if (this.player) this.player.setVisible(false);
+                        }
+                    });
+                }
             }
         });
     }
     // --- End Methods called from React ---
 
     update() {
-        if (!this.player || !this.player.active) return;
-        
-        // Animation logic is now handled inside the game loop for reliability
-        const currentAnim = this.player.anims.getName();
-        if (this.currentTypingStatus === 'correct') {
-            if (currentAnim !== 'run') {
+        if (!this.player || !this.player.active || this.isFinished) return;
+
+        const isRunning = this.currentTypingStatus === 'correct';
+        const currentAnim = this.player.anims.currentAnim;
+        const CONSTANT_RUN_SPEED = 3.5; // A fixed speed for running
+
+        // Only move if typing is correct AND player hasn't reached their target position yet
+        if (isRunning && this.player.x < this.targetPlayerX) {
+            if (!currentAnim || currentAnim.key !== 'run') {
                 this.player.play('run');
             }
-        } else { // 'idle' or 'incorrect'
-            if (currentAnim !== 'idle') {
-                this.player.play('idle');
-            }
-        }
-        
-        // Smoothly move player to target X position
-        this.player.x += (this.targetPlayerX - this.player.x) * 0.05;
+            
+            const distanceToTarget = this.targetPlayerX - this.player.x;
+            const movementThisFrame = Math.min(CONSTANT_RUN_SPEED, distanceToTarget);
+            
+            this.player.x += movementThisFrame;
 
-        // Background scrolling logic, now correctly tied to the reliable animation state
-        if (this.player.anims.getName() === 'run') {
-            this.background.tilePositionX += 0.5;
-            this.midground.tilePositionX += 1.5;
-            this.foreground.tilePositionX += 2;
+            // Scroll backgrounds based on the constant movement speed
+            this.background.tilePositionX += movementThisFrame * 0.2;
+            this.midground.tilePositionX += movementThisFrame * 0.5;
+            this.foreground.tilePositionX += movementThisFrame * 0.8;
+
+        } else {
+            // FIX 3: This is the core fix. If not running, stop ALL animations
+            // and set the texture to the first, static idle frame. This guarantees no movement.
+            const currentAnimKey = this.player.anims.currentAnim?.key;
+            if (currentAnimKey === 'run' || this.player.anims.isPlaying) {
+                this.player.anims.stop();
+                this.player.setTexture('player-idle', 0);
+            }
         }
     }
 }
@@ -131,7 +177,6 @@ export default function PhaserGame({ typingStatus, gameStatus, progress }) {
         };
     }, []);
 
-    // This useEffect now just passes the state to Phaser, not controls it directly.
     useEffect(() => {
         const scene = gameInstance.current?.scene?.scenes[0];
         if (scene && scene.setTypingStatus) {
@@ -141,7 +186,7 @@ export default function PhaserGame({ typingStatus, gameStatus, progress }) {
 
     useEffect(() => {
         const scene = gameInstance.current?.scene?.scenes[0];
-        if (scene) {
+        if (scene && scene.setProgress) {
             scene.setProgress(progress);
         }
     }, [progress]);
