@@ -30,7 +30,8 @@ export default function Game({ user, token }) {
     const [unlockedLevel, setUnlockedLevel] = useState('Beginner');
     const [textToType, setTextToType] = useState('');
     const [userInput, setUserInput] = useState('');
-    const [gameStatus, setGameStatus] = useState('waiting');
+    const [gameStatus, setGameStatus] = useState('waiting'); // 'waiting', 'started', 'finished'
+    const [typingStatus, setTypingStatus] = useState('idle'); // 'idle', 'correct', 'incorrect'
     const [timer, setTimer] = useState(TIME_LIMIT);
     const [finalStats, setFinalStats] = useState(null);
     const [errorState, setErrorState] = useState(false);
@@ -38,7 +39,6 @@ export default function Game({ user, token }) {
     const timerIntervalRef = useRef(null);
     const gameStartTimeRef = useRef(null);
     
-    // Using a ref for user input to avoid stale closures in endGame
     const userInputRef = useRef(userInput);
     userInputRef.current = userInput;
 
@@ -56,11 +56,11 @@ export default function Game({ user, token }) {
         } catch (error) {
             console.error('Failed to save game session:', error.response ? error.response.data.message : error.message);
         }
-    }, [user, token, level]); // Dependencies for saving
+    }, [user, token, level]);
 
     const endGame = useCallback((completedSuccessfully) => {
         setGameStatus((currentStatus) => {
-            if (currentStatus === 'finished') return currentStatus; // Prevent multiple calls
+            if (currentStatus === 'finished') return currentStatus;
 
             clearInterval(timerIntervalRef.current);
 
@@ -100,7 +100,7 @@ export default function Game({ user, token }) {
             }
             return 'finished';
         });
-    }, [textToType, level, unlockedLevel, saveGameSession]); // Simplified dependencies
+    }, [textToType, level, unlockedLevel, saveGameSession]);
 
     const startGame = useCallback(async (selectedLevel) => {
         clearInterval(timerIntervalRef.current);
@@ -120,7 +120,7 @@ export default function Game({ user, token }) {
         startGame('Beginner');
     }, [startGame]);
 
-    // **FIXED TIMER LOGIC**
+    // Timer logic
     useEffect(() => {
         if (gameStatus === 'started') {
             timerIntervalRef.current = setInterval(() => {
@@ -140,6 +140,20 @@ export default function Game({ user, token }) {
 
         return () => clearInterval(timerIntervalRef.current);
     }, [gameStatus, endGame]);
+
+    // **NEW LOGIC**: This effect derives the `typingStatus` for Phaser.
+    useEffect(() => {
+        if (gameStatus !== 'started') {
+            setTypingStatus('idle');
+            return;
+        }
+        if (userInput.length === 0) {
+            setTypingStatus('idle');
+            return;
+        }
+        setTypingStatus(errorState ? 'incorrect' : 'correct');
+    }, [userInput, gameStatus, errorState]);
+
 
     const handleInputChange = (value) => {
         if (gameStatus === 'finished' || !textToType || textToType === 'Loading...') return;
@@ -168,13 +182,21 @@ export default function Game({ user, token }) {
         }
     };
     
-    const progress = textToType.length > 0 ? (userInput.length / textToType.length) * 100 : 0;
+    // **MODIFIED**: Calculate progress as a value between 0 and 1 for Phaser.
+    const progress = textToType.length > 0 ? userInput.length / textToType.length : 0;
     const canAdvance = finalStats?.completed && finalStats?.accuracy >= 85 && levelIndex[level] < levels.length - 1;
 
     return (
         <div className="game-container storyboard">
             {finalStats && <Results stats={finalStats} onRestart={handleRestart} onNextLevel={handleNextLevel} canAdvance={canAdvance} />}
-            <PhaserGame progress={progress} errorState={errorState} />
+            
+            {/* **MODIFIED**: Pass the new, correct props to PhaserGame */}
+            <PhaserGame 
+                typingStatus={typingStatus}
+                gameStatus={gameStatus}
+                progress={progress}
+            />
+
             <Stats timer={timer} gameStatus={gameStatus} />
             <ScrollingTypingArea textToType={textToType} userInput={userInput} onInputChange={handleInputChange} gameStatus={gameStatus} />
             <div className="level-selector">

@@ -13,6 +13,7 @@ class GameScene extends Phaser.Scene {
         this.targetPlayerX = 0;
         this.currentTypingStatus = 'idle'; // State managed within Phaser
         this.isFinished = false; // Flag to control update loop during completion animation
+        this.playerState = 'idle'; // Explicit state for animation control
     }
 
     preload() {
@@ -47,7 +48,6 @@ class GameScene extends Phaser.Scene {
         this.player.setScale(0.35);
         this.player.setOrigin(0.5, 0.5);
         this.targetPlayerX = this.initialPlayerX;
-        // FIX 1: Set a static texture on creation instead of playing the faulty idle animation.
         this.player.setTexture('player-idle', 0);
     }
     
@@ -74,8 +74,10 @@ class GameScene extends Phaser.Scene {
             this.player.x = this.initialPlayerX;
             this.targetPlayerX = this.initialPlayerX;
             this.player.setVisible(true);
+            this.player.setFlipX(false); // Ensure player faces forward on reset
 
-            // FIX 2: On reset, stop all animations and set the static idle texture.
+            // On reset, stop all animations and set the static idle texture.
+            this.playerState = 'idle';
             this.player.anims.stop();
             this.player.setTexture('player-idle', 0);
 
@@ -100,10 +102,11 @@ class GameScene extends Phaser.Scene {
             duration: 300, 
             onUpdate: () => {
                 // Manually scroll the background during the final tween
+                if (!this.player) return;
                 const movementSinceLastFrame = this.player.x - (this.player.prevTweenedProps?.x || this.player.x);
-                this.background.tilePositionX += movementSinceLastFrame * 0.2;
-                this.midground.tilePositionX += movementSinceLastFrame * 0.5;
-                this.foreground.tilePositionX += movementSinceLastFrame * 0.8;
+                this.background.tilePositionX += movementSinceLastFrame * 1.0;
+                this.midground.tilePositionX += movementSinceLastFrame * 2.0;
+                this.foreground.tilePositionX += movementSinceLastFrame * 3.5;
             },
             onComplete: () => {
                 // After reaching the finish line, tween off the screen
@@ -125,35 +128,48 @@ class GameScene extends Phaser.Scene {
 
     update() {
         if (!this.player || !this.player.active || this.isFinished) return;
+        
+        // --- MOVEMENT LOGIC ---
+        // We can only move if typing is correct.
+        const canMove = this.currentTypingStatus === 'correct';
+        const distanceToTarget = this.targetPlayerX - this.player.x;
+        const isAtTarget = Math.abs(distanceToTarget) < 2; // Add a small threshold
+        
+        let movementThisFrame = 0;
+        const CONSTANT_SPEED = 5; // A fixed speed for responsive movement
 
-        const isRunning = this.currentTypingStatus === 'correct';
-        const currentAnim = this.player.anims.currentAnim;
-        const CONSTANT_RUN_SPEED = 3.5; // A fixed speed for running
-
-        // Only move if typing is correct AND player hasn't reached their target position yet
-        if (isRunning && this.player.x < this.targetPlayerX) {
-            if (!currentAnim || currentAnim.key !== 'run') {
-                this.player.play('run');
+        if (canMove && !isAtTarget) {
+            // Move towards the target at a constant speed, without overshooting.
+            if (distanceToTarget > 0) { // Moving right (forward)
+                movementThisFrame = Math.min(CONSTANT_SPEED, distanceToTarget);
+                this.player.setFlipX(false);
+            } else { // Moving left (backspace)
+                movementThisFrame = Math.max(-CONSTANT_SPEED, distanceToTarget);
+                this.player.setFlipX(true); // Flip sprite to run backward
             }
-            
-            const distanceToTarget = this.targetPlayerX - this.player.x;
-            const movementThisFrame = Math.min(CONSTANT_RUN_SPEED, distanceToTarget);
-            
             this.player.x += movementThisFrame;
+        }
 
-            // Scroll backgrounds based on the constant movement speed
-            this.background.tilePositionX += movementThisFrame * 0.2;
-            this.midground.tilePositionX += movementThisFrame * 0.5;
-            this.foreground.tilePositionX += movementThisFrame * 0.8;
-
-        } else {
-            // FIX 3: This is the core fix. If not running, stop ALL animations
-            // and set the texture to the first, static idle frame. This guarantees no movement.
-            const currentAnimKey = this.player.anims.currentAnim?.key;
-            if (currentAnimKey === 'run' || this.player.anims.isPlaying) {
+        // --- ANIMATION LOGIC ---
+        // Determine the desired state based on movement.
+        const desiredState = (canMove && !isAtTarget) ? 'running' : 'idle';
+        if (this.playerState !== desiredState) {
+            this.playerState = desiredState;
+            if (this.playerState === 'running') {
+                this.player.play('run');
+            } else {
                 this.player.anims.stop();
                 this.player.setTexture('player-idle', 0);
             }
+        }
+        
+        // --- PARALLAX SCROLLING ---
+        // The background only scrolls when the player actually moves.
+        if (movementThisFrame !== 0) {
+            // Increased multipliers for a faster, more noticeable parallax effect.
+            this.background.tilePositionX += movementThisFrame * 1.0;
+            this.midground.tilePositionX += movementThisFrame * 2.0;
+            this.foreground.tilePositionX += movementThisFrame * 3.5;
         }
     }
 }
@@ -172,8 +188,10 @@ export default function PhaserGame({ typingStatus, gameStatus, progress }) {
         };
         gameInstance.current = new Phaser.Game(config);
         return () => {
-            gameInstance.current.destroy(true, false);
-            gameInstance.current = null;
+            if (gameInstance.current) {
+                gameInstance.current.destroy(true, false);
+                gameInstance.current = null;
+            }
         };
     }, []);
 
