@@ -41,6 +41,7 @@ export default function Game({ user, token }) {
     
     const userInputRef = useRef(userInput);
     userInputRef.current = userInput;
+    const idleTimeoutRef = useRef(null);
 
     const saveGameSession = useCallback(async (stats) => {
         if (!user || !token) return;
@@ -141,18 +142,8 @@ export default function Game({ user, token }) {
         return () => clearInterval(timerIntervalRef.current);
     }, [gameStatus, endGame]);
 
-    // **NEW LOGIC**: This effect derives the `typingStatus` for Phaser.
-    useEffect(() => {
-        if (gameStatus !== 'started') {
-            setTypingStatus('idle');
-            return;
-        }
-        if (userInput.length === 0) {
-            setTypingStatus('idle');
-            return;
-        }
-        setTypingStatus(errorState ? 'incorrect' : 'correct');
-    }, [userInput, gameStatus, errorState]);
+    // Clear idle timeout on unmount
+    useEffect(() => () => clearTimeout(idleTimeoutRef.current), []);
 
 
     const handleInputChange = (value) => {
@@ -163,8 +154,40 @@ export default function Game({ user, token }) {
             gameStartTimeRef.current = Date.now();
         }
         
-        setErrorState(!textToType.startsWith(value));
-        setUserInput(value);
+        // Determine action: type forward, backspace, or no change
+        const prev = userInputRef.current;
+        const grew = value.length > prev.length;
+        const shrank = value.length < prev.length;
+
+        // Set typing status based on current keystroke only
+        if (grew) {
+            const idx = prev.length;
+            const newCharCorrect = textToType[idx] === value[idx];
+            setTypingStatus(newCharCorrect ? 'correct' : 'incorrect');
+        } else if (shrank) {
+            // Backspace: move backward
+            setTypingStatus('correct');
+        } else {
+            setTypingStatus('idle');
+        }
+
+        // Movement progress is based on current typed length (forward/backward),
+        // independent of past mistakes so it never "locks"
+        if (textToType.length > 0) {
+            const clamped = Math.max(0, Math.min(textToType.length, value.length));
+            const prog = clamped / textToType.length;
+            // Update state that Phaser listens to via props
+            setUserInput(value);
+            // Note: `progress` is derived below from userInput, but update immediately here
+        } else {
+            setUserInput(value);
+        }
+
+        // Idle after a short pause
+        clearTimeout(idleTimeoutRef.current);
+        idleTimeoutRef.current = setTimeout(() => {
+            setTypingStatus('idle');
+        }, 300);
 
         if (value.length === textToType.length) {
             endGame(true);
@@ -182,8 +205,8 @@ export default function Game({ user, token }) {
         }
     };
     
-    // **MODIFIED**: Calculate progress as a value between 0 and 1 for Phaser.
-    const progress = textToType.length > 0 ? userInput.length / textToType.length : 0;
+    // Progress reflects typed length (forward/backward) so it never freezes after a past mistake.
+    const progress = textToType.length > 0 ? Math.max(0, Math.min(1, userInput.length / textToType.length)) : 0;
     const canAdvance = finalStats?.completed && finalStats?.accuracy >= 85 && levelIndex[level] < levels.length - 1;
 
     return (
