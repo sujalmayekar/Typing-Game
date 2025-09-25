@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
-import Stats from '/src/components/Stats.jsx';
-import ScrollingTypingArea from '/src/components/ScrollingTypingArea.jsx';
-import PhaserGame from '/src/components/PhaserGame.jsx';
-import Results from '/src/components/Results.jsx';
-import '/src/pages/Game.css';
+import Stats from '../components/Stats';
+import ScrollingTypingArea from '../components/ScrollingTypingArea';
+import PhaserGame from '../components/PhaserGame';
+import Results from '../components/Results';
+import './Game.css';
 
 const API_URL = 'http://localhost:5001/api';
 
@@ -34,7 +34,6 @@ export default function Game({ user, token }) {
     const [typingStatus, setTypingStatus] = useState('idle'); // 'idle', 'correct', 'incorrect'
     const [timer, setTimer] = useState(TIME_LIMIT);
     const [finalStats, setFinalStats] = useState(null);
-    const [errorState, setErrorState] = useState(false);
     
     const timerIntervalRef = useRef(null);
     const gameStartTimeRef = useRef(null);
@@ -109,7 +108,6 @@ export default function Game({ user, token }) {
         setGameStatus('waiting');
         setUserInput('');
         setTimer(TIME_LIMIT);
-        setErrorState(false);
         setFinalStats(null);
         gameStartTimeRef.current = null;
         setTextToType('Loading...');
@@ -121,7 +119,6 @@ export default function Game({ user, token }) {
         startGame('Beginner');
     }, [startGame]);
 
-    // Timer logic
     useEffect(() => {
         if (gameStatus === 'started') {
             timerIntervalRef.current = setInterval(() => {
@@ -138,13 +135,10 @@ export default function Game({ user, token }) {
         } else {
             clearInterval(timerIntervalRef.current);
         }
-
         return () => clearInterval(timerIntervalRef.current);
     }, [gameStatus, endGame]);
 
-    // Clear idle timeout on unmount
     useEffect(() => () => clearTimeout(idleTimeoutRef.current), []);
-
 
     const handleInputChange = (value) => {
         if (gameStatus === 'finished' || !textToType || textToType === 'Loading...') return;
@@ -154,42 +148,26 @@ export default function Game({ user, token }) {
             gameStartTimeRef.current = Date.now();
         }
         
-        // Determine action: type forward, backspace, or no change
         const prev = userInputRef.current;
         const grew = value.length > prev.length;
-        const shrank = value.length < prev.length;
 
-        // Set typing status based on current keystroke only
         if (grew) {
             const idx = prev.length;
-            const newCharCorrect = textToType[idx] === value[idx];
-            setTypingStatus(newCharCorrect ? 'correct' : 'incorrect');
-        } else if (shrank) {
-            // Backspace: move backward
+            const isCorrect = textToType[idx] === value[idx];
+            setTypingStatus(isCorrect ? 'correct' : 'incorrect');
+        } else {
+            // Treat backspace as a non-error state for movement purposes
             setTypingStatus('correct');
-        } else {
-            setTypingStatus('idle');
         }
 
-        // Movement progress is based on current typed length (forward/backward),
-        // independent of past mistakes so it never "locks"
-        if (textToType.length > 0) {
-            const clamped = Math.max(0, Math.min(textToType.length, value.length));
-            const prog = clamped / textToType.length;
-            // Update state that Phaser listens to via props
-            setUserInput(value);
-            // Note: `progress` is derived below from userInput, but update immediately here
-        } else {
-            setUserInput(value);
-        }
-
-        // Idle after a short pause
         clearTimeout(idleTimeoutRef.current);
         idleTimeoutRef.current = setTimeout(() => {
             setTypingStatus('idle');
-        }, 300);
+        }, 500); // A 0.5 second pause will trigger the idle state
 
-        if (value.length === textToType.length) {
+        setUserInput(value);
+
+        if (value.length >= textToType.length) {
             endGame(true);
         }
     };
@@ -199,26 +177,21 @@ export default function Game({ user, token }) {
         const currentLevelIdx = levelIndex[level];
         if (currentLevelIdx < levels.length - 1) {
             const nextLevel = levels[currentLevelIdx + 1];
-            if (levelIndex[nextLevel] <= levelIndex[unlockedLevel]) {
-                startGame(nextLevel);
-            }
+            startGame(nextLevel);
         }
     };
     
-    // Progress reflects typed length (forward/backward) so it never freezes after a past mistake.
     const progress = textToType.length > 0 ? Math.max(0, Math.min(1, userInput.length / textToType.length)) : 0;
     const canAdvance = finalStats?.completed && finalStats?.accuracy >= 85 && levelIndex[level] < levels.length - 1;
 
     return (
         <div className="game-container storyboard">
             {finalStats && <Results stats={finalStats} onRestart={handleRestart} onNextLevel={handleNextLevel} canAdvance={canAdvance} />}
-            
             <PhaserGame 
                 typingStatus={typingStatus}
                 gameStatus={gameStatus}
                 progress={progress}
             />
-
             <Stats timer={timer} gameStatus={gameStatus} />
             <ScrollingTypingArea textToType={textToType} userInput={userInput} onInputChange={handleInputChange} gameStatus={gameStatus} />
             <div className="level-selector">
