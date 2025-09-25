@@ -170,7 +170,7 @@ export default function Game({ user, token }) {
             }, 1000); // 1-second grace period
         }
 
-        if (value.length === textToType.length && currentStatus !== 'incorrect') {
+        if (value.length === textToType.length) {
             endGame(true);
         }
     };
