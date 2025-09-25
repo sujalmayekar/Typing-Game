@@ -49,7 +49,7 @@ class GameScene extends Phaser.Scene {
 
         // Adjust player starting position and size
         this.initialPlayerX = this.scale.width / 7; 
-        this.player = this.add.sprite(this.initialPlayerX, this.scale.height / 1.5, 'player-idle');
+        this.player = this.add.sprite(this.initialPlayerX, this.scale.height / 1.28, 'player-idle');
         this.player.setScale(0.45); 
         this.player.setOrigin(0.5, 0.5);
         this.targetPlayerX = this.initialPlayerX;
