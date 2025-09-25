@@ -58,7 +58,7 @@ export default function Game({ user, token }) {
         }
     }, [user, token, level]);
 
-    const endGame = useCallback((completedSuccessfully) => {
+    const endGame = useCallback((completedSuccessfully, caughtByDarkness = false) => {
         setGameStatus((currentStatus) => {
             if (currentStatus === 'finished') return currentStatus;
 
@@ -78,12 +78,19 @@ export default function Game({ user, token }) {
             const finalWPM = minutes > 0 ? Math.round((correctChars / 5) / minutes) : 0;
             const finalAccuracy = finalInput.length > 0 ? Math.round((correctChars / finalInput.length) * 100) : 0;
             
+            let message = "Time's Up!";
+            if(caughtByDarkness) {
+                message = "Caught by the darkness!";
+            } else if (completedSuccessfully) {
+                message = "Level Complete!";
+            }
+
             const stats = {
                 wpm: finalWPM,
                 accuracy: finalAccuracy,
                 time: timeElapsed,
                 completed: completedSuccessfully,
-                message: completedSuccessfully ? "Level Complete!" : "Time's Up!"
+                message: message
             };
 
             setFinalStats(stats);
@@ -167,13 +174,17 @@ export default function Game({ user, token }) {
         if (currentStatus === 'correct' || currentStatus === 'backspacing') {
             idleTimeoutRef.current = setTimeout(() => {
                 setTypingStatus('idle');
-            }, 1000); // 1-second grace period
+            }, 2000); // 2-second grace period
         }
 
         if (value.length === textToType.length) {
             endGame(true);
         }
     };
+    
+    const handleDarknessCaught = useCallback(() => {
+        endGame(false, true);
+    }, [endGame]);
 
     const handleRestart = () => startGame(level);
     const handleNextLevel = () => {
@@ -197,6 +208,7 @@ export default function Game({ user, token }) {
                 typingStatus={typingStatus}
                 gameStatus={gameStatus}
                 progress={progress}
+                onDarknessCaught={handleDarknessCaught}
             />
 
             <Stats timer={timer} gameStatus={gameStatus} />
