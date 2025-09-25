@@ -31,7 +31,7 @@ export default function Game({ user, token }) {
     const [textToType, setTextToType] = useState('');
     const [userInput, setUserInput] = useState('');
     const [gameStatus, setGameStatus] = useState('waiting'); // 'waiting', 'started', 'finished'
-    const [typingStatus, setTypingStatus] = useState('idle'); // 'idle', 'correct', 'incorrect'
+    const [typingStatus, setTypingStatus] = useState('idle'); // 'idle', 'correct', 'incorrect', 'backspacing'
     const [timer, setTimer] = useState(TIME_LIMIT);
     const [finalStats, setFinalStats] = useState(null);
     
@@ -119,6 +119,7 @@ export default function Game({ user, token }) {
         startGame('Beginner');
     }, [startGame]);
 
+    // Timer logic
     useEffect(() => {
         if (gameStatus === 'started') {
             timerIntervalRef.current = setInterval(() => {
@@ -135,10 +136,9 @@ export default function Game({ user, token }) {
         } else {
             clearInterval(timerIntervalRef.current);
         }
+
         return () => clearInterval(timerIntervalRef.current);
     }, [gameStatus, endGame]);
-
-    useEffect(() => () => clearTimeout(idleTimeoutRef.current), []);
 
     const handleInputChange = (value) => {
         if (gameStatus === 'finished' || !textToType || textToType === 'Loading...') return;
@@ -147,27 +147,30 @@ export default function Game({ user, token }) {
             setGameStatus('started');
             gameStartTimeRef.current = Date.now();
         }
-        
-        const prev = userInputRef.current;
-        const grew = value.length > prev.length;
-
-        if (grew) {
-            const idx = prev.length;
-            const isCorrect = textToType[idx] === value[idx];
-            setTypingStatus(isCorrect ? 'correct' : 'incorrect');
-        } else {
-            // Treat backspace as a non-error state for movement purposes
-            setTypingStatus('correct');
-        }
 
         clearTimeout(idleTimeoutRef.current);
-        idleTimeoutRef.current = setTimeout(() => {
-            setTypingStatus('idle');
-        }, 500); // A 0.5 second pause will trigger the idle state
 
+        const prev = userInputRef.current;
+        let currentStatus = 'idle';
+
+        if (value.length > prev.length) { // Forward typing
+            const idx = prev.length;
+            currentStatus = (textToType[idx] === value[idx]) ? 'correct' : 'incorrect';
+        } else if (value.length < prev.length) { // Backspacing
+            currentStatus = 'backspacing';
+        }
+
+        setTypingStatus(currentStatus);
         setUserInput(value);
 
-        if (value.length >= textToType.length) {
+        // Set a timeout to return to idle ONLY if not incorrect
+        if (currentStatus === 'correct' || currentStatus === 'backspacing') {
+            idleTimeoutRef.current = setTimeout(() => {
+                setTypingStatus('idle');
+            }, 1000); // 1-second grace period
+        }
+
+        if (value.length === textToType.length && currentStatus !== 'incorrect') {
             endGame(true);
         }
     };
@@ -177,7 +180,9 @@ export default function Game({ user, token }) {
         const currentLevelIdx = levelIndex[level];
         if (currentLevelIdx < levels.length - 1) {
             const nextLevel = levels[currentLevelIdx + 1];
-            startGame(nextLevel);
+            if (levelIndex[nextLevel] <= levelIndex[unlockedLevel]) {
+                startGame(nextLevel);
+            }
         }
     };
     
@@ -187,11 +192,13 @@ export default function Game({ user, token }) {
     return (
         <div className="game-container storyboard">
             {finalStats && <Results stats={finalStats} onRestart={handleRestart} onNextLevel={handleNextLevel} canAdvance={canAdvance} />}
+            
             <PhaserGame 
                 typingStatus={typingStatus}
                 gameStatus={gameStatus}
                 progress={progress}
             />
+
             <Stats timer={timer} gameStatus={gameStatus} />
             <ScrollingTypingArea textToType={textToType} userInput={userInput} onInputChange={handleInputChange} gameStatus={gameStatus} />
             <div className="level-selector">

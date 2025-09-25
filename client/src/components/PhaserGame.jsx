@@ -22,7 +22,7 @@ class GameScene extends Phaser.Scene {
         this.targetSpeed = 0;
         this.maxSpeed = 300; 
         this.acceleration = 600;
-        this.deceleration = 900;
+        this.deceleration = 1200; // Increased deceleration for a more responsive stop
     }
 
     preload() {
@@ -52,6 +52,7 @@ class GameScene extends Phaser.Scene {
         this.targetPlayerX = this.initialPlayerX;
 
         this.player.setTexture('player-idle', 0);
+        this.player.setFlipX(false); // Default orientation: face right.
     }
     
     setProgress(newProgress) {
@@ -83,7 +84,7 @@ class GameScene extends Phaser.Scene {
             this.player.setVisible(true);
             this.player.anims.stop();
             this.player.setTexture('player-idle', 0);
-            this.player.setFlipX(false);
+            this.player.setFlipX(false); // Ensure it faces right on reset
         }
         this.background.tilePositionX = 0;
         this.midground.tilePositionX = 0;
@@ -99,7 +100,10 @@ class GameScene extends Phaser.Scene {
             ease: 'Power1',
             duration: 1200,
             onStart: () => {
-                if (this.player) this.player.play('run');
+                if (this.player) {
+                    this.player.setFlipX(false);
+                    this.player.play('run');
+                }
             },
             onComplete: () => {
                  if (this.player) this.player.setVisible(false);
@@ -114,48 +118,57 @@ class GameScene extends Phaser.Scene {
         const isMovingForward = this.player.x < this.targetPlayerX;
         const isMovingBackward = this.player.x > this.targetPlayerX;
 
-        // Determine target speed
-        if (this.gameStatus === 'started' && this.typingStatus === 'correct' && isMovingForward) {
+        // --- Determine Target Speed ---
+        const shouldBeRunning = this.gameStatus === 'started' && (this.typingStatus === 'correct' || this.typingStatus === 'idle');
+
+        if (shouldBeRunning && isMovingForward) {
             this.targetSpeed = this.maxSpeed;
         } else {
             this.targetSpeed = 0;
         }
-
-        // Smoothly adjust current speed
+        
+        // --- Smoothly Adjust Speed ---
         if (this.currentSpeed < this.targetSpeed) {
             this.currentSpeed = Math.min(this.targetSpeed, this.currentSpeed + this.acceleration * dt);
         } else if (this.currentSpeed > this.targetSpeed) {
             this.currentSpeed = Math.max(this.targetSpeed, this.currentSpeed - this.deceleration * dt);
         }
+        
+        const prevX = this.player.x;
 
-        // --- MOVEMENT AND ORIENTATION LOGIC ---
-        let moved = 0;
-
-        if (isMovingBackward) {
+        // --- Apply Movement ---
+        if (this.typingStatus === 'backspacing' && isMovingBackward) {
             const backwardSpeed = this.maxSpeed * 0.75;
-            const distanceToMove = backwardSpeed * dt;
-            const prevX = this.player.x;
-            this.player.x = Math.max(this.targetPlayerX, this.player.x - distanceToMove);
-            moved = this.player.x - prevX; // Will be negative
-            this.player.setFlipX(true);
-            this.player.play('run', true);
+            this.player.x = Math.max(this.targetPlayerX, this.player.x - backwardSpeed * dt);
         } else {
-            const prevX = this.player.x;
-            this.player.x += this.currentSpeed * dt;
-            moved = this.player.x - prevX; // Will be positive
-            this.player.setFlipX(false);
-             // Animation for forward movement
-            if (this.currentSpeed > 5) {
-                this.player.play('run', true);
-                const animSpeed = Phaser.Math.Clamp(this.currentSpeed / this.maxSpeed, 0.8, 1.5);
-                this.player.anims.timeScale = animSpeed;
+            if (isMovingForward) {
+                this.player.x = Math.min(this.targetPlayerX, this.player.x + this.currentSpeed * dt);
             } else {
-                this.player.anims.stop();
-                this.player.setTexture('player-idle', 0);
+                // Allows for smooth stopping even if slightly overshooting target
+                this.player.x += this.currentSpeed * dt; 
             }
         }
+
+        const moved = this.player.x - prevX;
+
+        // --- Set Animation and Orientation ---
+        if (Math.abs(moved) > 0.1) { // Player is physically moving
+            this.player.play('run', true);
+            this.player.setFlipX(moved < 0);
+        } else { // Player is idle
+            this.player.anims.stop();
+            this.player.setTexture('player-idle', 0);
+            this.player.setFlipX(false);
+        }
+
+        // --- Adjust Animation Speed ---
+        if (this.player.anims.isPlaying) {
+            const currentMoveSpeed = Math.abs(moved / dt);
+            const animSpeed = Phaser.Math.Clamp(currentMoveSpeed / this.maxSpeed, 0.8, 1.5);
+            this.player.anims.timeScale = animSpeed;
+        }
        
-        // Update background positions based on actual movement
+        // --- Update Parallax Backgrounds ---
         this.background.tilePositionX += moved * 0.2;
         this.midground.tilePositionX += moved * 0.5;
         this.foreground.tilePositionX += moved * 1.0;
