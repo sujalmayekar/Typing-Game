@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import Phaser from 'phaser';
+import * as Phaser from 'phaser';
 
 class GameScene extends Phaser.Scene {
     constructor() {
@@ -20,13 +20,17 @@ class GameScene extends Phaser.Scene {
         this.initialPlayerX = 0;
         this.targetPlayerX = 0;
 
-        // Motion model (Limbo-like smoothness)
-        this.velocityX = 0; // px/s
-        this.maxSpeed = 650; // px/s
-        this.acceleration = 2600; // px/s^2
-        this.friction = 2800; // px/s^2 (applied when not accelerating)
-        this.stopThreshold = 6; // px/s below which we snap idle
-        this.lastProgress = 0;
+        // --- "Limbo" Style Motion Model ---
+        // We use lower friction than acceleration to create a feeling of momentum and "coasting" to a stop.
+        this.velocityX = 0; // Current speed in pixels/second
+        this.maxSpeed = 700; // Top speed
+        this.acceleration = 3000; // How quickly the character gets to top speed
+        this.friction = 1200;   // How quickly the character slows down. Lower value = more "slide".
+        this.stopThreshold = 5; // Below this speed, snap to a full stop.
+        
+        // A grace period to keep the character "active" during brief typing pauses.
+        this.lastCorrectTypeTime = 0; // Timestamp of the last correct keypress
+        this.runGracePeriod = 800; // ms to keep running after last correct input.
     }
 
     preload() {
@@ -43,7 +47,7 @@ class GameScene extends Phaser.Scene {
         this.midground = this.add.tileSprite(0, 0, this.scale.width, this.scale.height, 'midground').setOrigin(0, 0);
         this.foreground = this.add.tileSprite(0, 0, this.scale.width, this.scale.height, 'foreground').setOrigin(0, 0);
 
-        // Create the run animation. Idle uses a static frame.
+        // Create the run animation.
         this.anims.create({
             key: 'run',
             frames: this.anims.generateFrameNumbers('player-run', { start: 0, end: 7 }),
@@ -57,6 +61,7 @@ class GameScene extends Phaser.Scene {
         this.player.setScale(0.35);
         this.player.setOrigin(0.5, 0.5);
         this.targetPlayerX = this.initialPlayerX;
+        this.player.setFlipX(false); // Ensure player starts facing forward
 
         // Set the initial state to a single, static idle frame.
         this.player.setTexture('player-idle', 0);
@@ -64,15 +69,12 @@ class GameScene extends Phaser.Scene {
     
     // --- Methods called from the React component to update Phaser's state ---
     
-    // Called when the user's typing progress changes
     setProgress(newProgress) {
-        // Clamp [0,1] to be safe
         this.progress = Math.max(0, Math.min(1, newProgress ?? 0));
         const travelDistance = this.scale.width * 0.6; // The total race distance
         this.targetPlayerX = this.initialPlayerX + (travelDistance * this.progress);
     }
 
-    // Called when the game state (waiting, started, finished) changes
     setGameStatus(status) {
         this.gameStatus = status;
         if (this.gameStatus === 'finished' && this.progress >= 1) {
@@ -82,7 +84,6 @@ class GameScene extends Phaser.Scene {
         }
     }
 
-    // Called when current keystroke status changes
     setTypingStatus(status) {
         this.typingStatus = status;
     }
@@ -94,13 +95,15 @@ class GameScene extends Phaser.Scene {
         this.progress = 0;
         this.typingStatus = 'idle';
         this.velocityX = 0;
+        this.lastCorrectTypeTime = 0;
         if (this.player) {
             this.tweens.killTweensOf(this.player);
             this.player.x = this.initialPlayerX;
             this.targetPlayerX = this.initialPlayerX;
             this.player.setVisible(true);
             this.player.anims.stop();
-            this.player.setTexture('player-idle', 0); // Reset to static idle frame
+            this.player.setTexture('player-idle', 0);
+            this.player.setFlipX(false); // Explicitly set direction on reset
         }
         // Reset backgrounds
         this.background.tilePositionX = 0;
@@ -136,55 +139,67 @@ class GameScene extends Phaser.Scene {
         });
     }
 
-    update() {
+    update(time, delta) {
         if (!this.player || !this.player.active || this.isFinished) return;
-        const dt = (this.game?.loop?.delta ?? 16.6) / 1000; // seconds
+        const dt = delta / 1000; // seconds
 
-        // Determine desired direction: towards target only when actively typing correctly
-        const canMove = this.gameStatus === 'started' && this.typingStatus === 'correct';
+        // Update timestamp on correct typing to extend the "running" state
+        if (this.typingStatus === 'correct') {
+            this.lastCorrectTypeTime = time;
+        }
+
+        // Determine if the player should be trying to move
+        const isRunningGracePeriod = (time - this.lastCorrectTypeTime) < this.runGracePeriod;
+        const canMove = this.gameStatus === 'started' && isRunningGracePeriod;
         const diff = this.targetPlayerX - this.player.x;
-        const dir = canMove && Math.abs(diff) > 0.5 ? Math.sign(diff) : 0;
+        const dir = canMove && Math.abs(diff) > 1 ? Math.sign(diff) : 0;
 
-        // Acceleration or friction
+        // --- PHYSICS: Apply acceleration or friction ---
         if (dir !== 0) {
             this.velocityX += dir * this.acceleration * dt;
-            // Clamp to max speed
-            if (Math.abs(this.velocityX) > this.maxSpeed) {
-                this.velocityX = this.maxSpeed * Math.sign(this.velocityX);
-            }
+            this.velocityX = Phaser.Math.Clamp(this.velocityX, -this.maxSpeed, this.maxSpeed);
         } else {
-            // Apply friction to smoothly come to rest
             const vSign = Math.sign(this.velocityX);
-            const vMag = Math.max(0, Math.abs(this.velocityX) - this.friction * dt);
-            this.velocityX = vMag * vSign;
-            if (Math.abs(this.velocityX) < this.stopThreshold) this.velocityX = 0;
+            const vMag = Math.abs(this.velocityX);
+            const frictionMagnitude = this.friction * dt;
+            this.velocityX = vSign * Math.max(0, vMag - frictionMagnitude);
         }
 
-        // Prevent overshooting target when moving towards it
-        const prevX = this.player.x;
-        let newX = this.player.x + this.velocityX * dt;
-        if (dir > 0 && newX > this.targetPlayerX) { newX = this.targetPlayerX; this.velocityX = 0; }
-        if (dir < 0 && newX < this.targetPlayerX) { newX = this.targetPlayerX; this.velocityX = 0; }
-        this.player.x = newX;
+        // --- POSITION: Update based on velocity ---
+        this.player.x += this.velocityX * dt;
 
-        // Parallax: proportional to actual displacement (supports reverse)
-        const moved = this.player.x - prevX;
-        if (moved !== 0) {
-            if (this.player.setFlipX) this.player.setFlipX(moved < 0);
-            this.background.tilePositionX += moved * 0.35;
-            this.midground.tilePositionX += moved * 0.95;
-            this.foreground.tilePositionX += moved * 1.7;
+        // Prevent overshooting the target
+        const newSign = Math.sign(this.targetPlayerX - this.player.x);
+        if (dir !== 0 && newSign !== dir) {
+            this.player.x = this.targetPlayerX;
+            this.velocityX = 0;
         }
+        
+        // --- VISUALS ---
 
-        // Animation: run when moving, idle when near still; speed tied to velocity
+        // 1. Smooth Parallax Scrolling tied to velocity
+        this.background.tilePositionX += this.velocityX * dt * 0.2;
+        this.midground.tilePositionX += this.velocityX * dt * 0.6;
+        this.foreground.tilePositionX += this.velocityX * dt * 1.2;
+
         const speed = Math.abs(this.velocityX);
+
+        // 2. Fix Sprite Glitch: Only change direction if moving meaningfully.
         if (speed > this.stopThreshold) {
+            this.player.setFlipX(this.velocityX < 0);
+        }
+        
+        // 3. Animation State
+        const shouldAnimateRun = this.gameStatus === 'started' && speed > this.stopThreshold;
+
+        if (shouldAnimateRun) {
             if (!this.player.anims.isPlaying || this.player.anims.currentAnim.key !== 'run') {
                 this.player.play('run');
             }
-            const animSpeed = Phaser.Math.Clamp(speed / this.maxSpeed, 0.6, 1.8);
+            const animSpeed = Phaser.Math.Clamp(speed / this.maxSpeed, 0.7, 1.5);
             this.player.anims.timeScale = animSpeed;
         } else {
+            // Only switch to idle if not moving (below threshold)
             if (this.player.anims.isPlaying) {
                 this.player.anims.stop();
             }
@@ -209,12 +224,14 @@ export default function PhaserGame({ typingStatus, gameStatus, progress }) {
         };
         gameInstance.current = new Phaser.Game(config);
         return () => {
-            gameInstance.current.destroy(true, false);
-            gameInstance.current = null;
+            if (gameInstance.current) {
+                gameInstance.current.destroy(true, false);
+                gameInstance.current = null;
+            }
         };
     }, []);
 
-    // Prop listeners: When a prop from Game.jsx changes, call the corresponding method in the Phaser scene.
+    // Prop listeners
     useEffect(() => {
         gameInstance.current?.scene?.scenes[0]?.setProgress(progress);
     }, [progress]);

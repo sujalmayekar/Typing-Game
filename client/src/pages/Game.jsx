@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
-import Stats from '../components/Stats';
-import ScrollingTypingArea from '../components/ScrollingTypingArea';
-import PhaserGame from '../components/PhaserGame';
-import Results from '../components/Results';
-import './Game.css';
+import Stats from '/src/components/Stats.jsx';
+import ScrollingTypingArea from '/src/components/ScrollingTypingArea.jsx';
+import PhaserGame from '/src/components/PhaserGame.jsx';
+import Results from '/src/components/Results.jsx';
+import '/src/pages/Game.css';
 
 const API_URL = 'http://localhost:5001/api';
 
@@ -213,7 +213,6 @@ export default function Game({ user, token }) {
         <div className="game-container storyboard">
             {finalStats && <Results stats={finalStats} onRestart={handleRestart} onNextLevel={handleNextLevel} canAdvance={canAdvance} />}
             
-            {/* **MODIFIED**: Pass the new, correct props to PhaserGame */}
             <PhaserGame 
                 typingStatus={typingStatus}
                 gameStatus={gameStatus}
@@ -231,3 +230,4 @@ export default function Game({ user, token }) {
         </div>
     );
 }
+
