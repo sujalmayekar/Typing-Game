@@ -28,7 +28,7 @@ class GameScene extends Phaser.Scene {
         this.darkness = null;
         this.darknessX = 0;
         this.darknessSpeed = 40; // Base speed
-        this.darknessBuffer = 48; // Safety distance from player
+        this.darknessBuffer = 5 // Safety distance from player
         this.darknessActive = false;
         this.darknessStartDelay = 1.5; // seconds
         this._darknessStartTime = 0;
@@ -89,7 +89,7 @@ class GameScene extends Phaser.Scene {
         // Create a gradient that goes from black (left) to transparent (right)
         const gradient = context.createLinearGradient(0, 0, w, 0);
         gradient.addColorStop(0, 'rgba(0,0,0,1)'); // Opaque black at the start
-        gradient.addColorStop(0.95, 'rgba(0,0,0,1)'); // Opaque for most of it
+        gradient.addColorStop(0.96, 'rgba(0,0,0,1)'); // Opaque for most of it
         gradient.addColorStop(1, 'rgba(0,0,0,0)'); // Fade to transparent at the very edge
 
         context.fillStyle = gradient;
