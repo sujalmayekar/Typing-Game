@@ -48,6 +48,7 @@ export default function Game({ user, token }) {
     const userInputRef = useRef(userInput);
     userInputRef.current = userInput;
     const idleTimeoutRef = useRef(null);
+    const initialLoadRef = useRef(true); // Ref to prevent double-fetch in Strict Mode
 
     const saveGameSession = useCallback(async (stats) => {
         if (!user || !token) return;
@@ -140,7 +141,11 @@ export default function Game({ user, token }) {
     }, []);
 
     useEffect(() => {
-        startGame('Beginner');
+        // Only run the initial game start on the very first render in Strict Mode
+        if (initialLoadRef.current) {
+            initialLoadRef.current = false;
+            startGame('Beginner');
+        }
     }, [startGame]);
 
     useEffect(() => {
@@ -239,3 +244,4 @@ export default function Game({ user, token }) {
         </div>
     );
 }
+

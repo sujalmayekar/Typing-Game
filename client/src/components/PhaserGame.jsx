@@ -27,7 +27,7 @@ class GameScene extends Phaser.Scene {
         // Darkness properties
         this.darkness = null;
         this.darknessX = 0;
-        this.darknessSpeed = 40; // Base speed, will be updated by setLevelConfig
+        this.darknessSpeed = 30; // Base speed, will be updated by setLevelConfig
         this.darknessBuffer = 5 // Safety distance from player
         this.darknessActive = false;
         this.darknessStartDelay = 1.5; // seconds, will be updated by setLevelConfig
@@ -107,16 +107,16 @@ class GameScene extends Phaser.Scene {
     
     setProgress(newProgress) {
         this.progress = Math.max(0, Math.min(1, newProgress ?? 0));
-        const travelDistance = this.scale.width * 0.6;
+        const travelDistance = this.scale.width * 0.75;
         this.targetPlayerX = this.initialPlayerX + (travelDistance * this.progress);
     }
 
     setLevelConfig(level) {
         if (level === 'Advanced' || level === 'Expert') {
-            this.darknessSpeed = 80; // Double speed for 30s timer
-            this.darknessStartDelay = 0.75; // Half the delay for 30s timer
+            this.darknessSpeed = 30; // Double speed for 30s timer
+            this.darknessStartDelay = 2; // Half the delay for 30s timer
         } else {
-            this.darknessSpeed = 40; // Default speed
+            this.darknessSpeed = 30; // Default speed
             this.darknessStartDelay = 1.5; // Default delay
         }
     }
@@ -287,6 +287,15 @@ class GameScene extends Phaser.Scene {
 
 export default function PhaserGame({ typingStatus, gameStatus, progress, onDarknessCaught, level }) {
     const gameInstance = useRef(null);
+    // Create a ref to hold the latest version of the onDarknessCaught callback.
+    // This prevents the main useEffect from re-running when the callback changes.
+    const onDarknessCaughtRef = useRef(onDarknessCaught);
+
+    // Keep the ref updated with the latest callback from props.
+    useEffect(() => {
+        onDarknessCaughtRef.current = onDarknessCaught;
+    }, [onDarknessCaught]);
+
 
     useEffect(() => {
         const config = {
@@ -300,16 +309,18 @@ export default function PhaserGame({ typingStatus, gameStatus, progress, onDarkn
         gameInstance.current = new Phaser.Game(config);
         
         // Event listener for when the darkness catches the player
-        gameInstance.current.events.on('darknessCaught', onDarknessCaught);
+        // It calls the function stored in our ref, ensuring it's always the latest version.
+        const handleCaught = () => onDarknessCaughtRef.current();
+        gameInstance.current.events.on('darknessCaught', handleCaught);
         
         return () => {
             if (gameInstance.current) {
-                gameInstance.current.events.off('darknessCaught', onDarknessCaught);
+                gameInstance.current.events.off('darknessCaught', handleCaught);
                 gameInstance.current.destroy(true, false);
                 gameInstance.current = null;
             }
         };
-    }, [onDarknessCaught]);
+    }, []); // <-- The dependency array is now empty. This effect runs only ONCE.
 
     useEffect(() => {
         gameInstance.current?.scene?.scenes[0]?.setProgress(progress);
@@ -329,3 +340,4 @@ export default function PhaserGame({ typingStatus, gameStatus, progress, onDarkn
 
     return <div id="phaser-container" className="racing-track-storyboard" />;
 }
+
