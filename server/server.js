@@ -33,10 +33,10 @@ const getTextForLevel = async (level) => {
             prompt = "Generate a single, interesting sentence that is moderately complex. Around 20-25 words. Do not include quotes.";
             break;
         case 'Advanced':
-            prompt = "Generate two connected sentences on a topic like science or history. Total around 30-40 words. Do not include quotes.";
+            prompt = "Generate a sentence on a topic like science or history and include special characters. Total around 25-30 words. Do not include quotes.";
             break;
         case 'Expert':
-            prompt = "Generate two or three complex, connected sentences with varied punctuation and vocabulary on a technical topic. Total around 45-60 words. Do not include quotes.";
+            prompt = "Generate two connected sentences on a topic like science or history. Total around 30-40 words. Do not include quotes.";
             break;
         default:
             prompt = "Generate one simple sentence. Around 10 words. Do not include quotes.";

@@ -27,10 +27,10 @@ class GameScene extends Phaser.Scene {
         // Darkness properties
         this.darkness = null;
         this.darknessX = 0;
-        this.darknessSpeed = 40; // Base speed
+        this.darknessSpeed = 40; // Base speed, will be updated by setLevelConfig
         this.darknessBuffer = 5 // Safety distance from player
         this.darknessActive = false;
-        this.darknessStartDelay = 1.5; // seconds
+        this.darknessStartDelay = 1.5; // seconds, will be updated by setLevelConfig
         this._darknessStartTime = 0;
         this.darknessSlowWhenPlayerMoves = true;
     }
@@ -109,6 +109,16 @@ class GameScene extends Phaser.Scene {
         this.progress = Math.max(0, Math.min(1, newProgress ?? 0));
         const travelDistance = this.scale.width * 0.6;
         this.targetPlayerX = this.initialPlayerX + (travelDistance * this.progress);
+    }
+
+    setLevelConfig(level) {
+        if (level === 'Advanced' || level === 'Expert') {
+            this.darknessSpeed = 80; // Double speed for 30s timer
+            this.darknessStartDelay = 0.75; // Half the delay for 30s timer
+        } else {
+            this.darknessSpeed = 40; // Default speed
+            this.darknessStartDelay = 1.5; // Default delay
+        }
     }
 
     setGameStatus(status) {
@@ -275,7 +285,7 @@ class GameScene extends Phaser.Scene {
     }
 }
 
-export default function PhaserGame({ typingStatus, gameStatus, progress, onDarknessCaught }) {
+export default function PhaserGame({ typingStatus, gameStatus, progress, onDarknessCaught, level }) {
     const gameInstance = useRef(null);
 
     useEffect(() => {
@@ -313,6 +323,9 @@ export default function PhaserGame({ typingStatus, gameStatus, progress, onDarkn
         gameInstance.current?.scene?.scenes[0]?.setGameStatus(gameStatus);
     }, [gameStatus]);
 
+    useEffect(() => {
+        gameInstance.current?.scene?.scenes[0]?.setLevelConfig(level);
+    }, [level]);
+
     return <div id="phaser-container" className="racing-track-storyboard" />;
 }
-

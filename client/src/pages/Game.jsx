@@ -23,7 +23,13 @@ const fetchAIText = async (level) => {
 
 const levels = ['Beginner', 'Intermediate', 'Advanced', 'Expert'];
 const levelIndex = { Beginner: 0, Intermediate: 1, Advanced: 2, Expert: 3 };
-const TIME_LIMIT = 60;
+
+const getLevelTimeLimit = (level) => {
+    if (level === 'Advanced' || level === 'Expert') {
+        return 30;
+    }
+    return 60;
+};
 const REQUIRED_ACCURACY = 85;
 
 export default function Game({ user, token }) {
@@ -33,7 +39,7 @@ export default function Game({ user, token }) {
     const [userInput, setUserInput] = useState('');
     const [gameStatus, setGameStatus] = useState('waiting'); // 'waiting', 'started', 'finished'
     const [typingStatus, setTypingStatus] = useState('idle'); // 'idle', 'correct', 'incorrect', 'backspacing'
-    const [timer, setTimer] = useState(TIME_LIMIT);
+    const [timer, setTimer] = useState(getLevelTimeLimit('Beginner'));
     const [finalStats, setFinalStats] = useState(null);
     
     const timerIntervalRef = useRef(null);
@@ -64,9 +70,10 @@ export default function Game({ user, token }) {
             if (currentStatus === 'finished') return currentStatus;
 
             clearInterval(timerIntervalRef.current);
+            const timeLimitForLevel = getLevelTimeLimit(level);
 
             const finalInput = userInputRef.current;
-            const timeElapsed = gameStartTimeRef.current ? Math.round((Date.now() - gameStartTimeRef.current) / 1000) : TIME_LIMIT;
+            const timeElapsed = gameStartTimeRef.current ? Math.round((Date.now() - gameStartTimeRef.current) / 1000) : timeLimitForLevel;
 
             let correctChars = 0;
             finalInput.split('').forEach((char, index) => {
@@ -124,7 +131,7 @@ export default function Game({ user, token }) {
         setLevel(selectedLevel);
         setGameStatus('waiting');
         setUserInput('');
-        setTimer(TIME_LIMIT);
+        setTimer(getLevelTimeLimit(selectedLevel));
         setFinalStats(null);
         gameStartTimeRef.current = null;
         setTextToType('Loading...');
@@ -138,9 +145,10 @@ export default function Game({ user, token }) {
 
     useEffect(() => {
         if (gameStatus === 'started') {
+            const timeLimitForLevel = getLevelTimeLimit(level);
             timerIntervalRef.current = setInterval(() => {
                 const timeElapsed = Math.round((Date.now() - gameStartTimeRef.current) / 1000);
-                const timeRemaining = TIME_LIMIT - timeElapsed;
+                const timeRemaining = timeLimitForLevel - timeElapsed;
 
                 if (timeRemaining <= 0) {
                     setTimer(0);
@@ -154,7 +162,7 @@ export default function Game({ user, token }) {
         }
 
         return () => clearInterval(timerIntervalRef.current);
-    }, [gameStatus, endGame]);
+    }, [gameStatus, endGame, level]);
 
     const handleInputChange = (value) => {
         if (gameStatus === 'finished' || !textToType || textToType === 'Loading...') return;
@@ -217,6 +225,7 @@ export default function Game({ user, token }) {
                 gameStatus={gameStatus}
                 progress={progress}
                 onDarknessCaught={handleDarknessCaught}
+                level={level}
             />
 
             <Stats timer={timer} gameStatus={gameStatus} />
