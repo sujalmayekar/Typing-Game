@@ -24,6 +24,7 @@ const fetchAIText = async (level) => {
 const levels = ['Beginner', 'Intermediate', 'Advanced', 'Expert'];
 const levelIndex = { Beginner: 0, Intermediate: 1, Advanced: 2, Expert: 3 };
 const TIME_LIMIT = 60;
+const REQUIRED_ACCURACY = 85;
 
 export default function Game({ user, token }) {
     const [level, setLevel] = useState('Beginner');
@@ -58,7 +59,7 @@ export default function Game({ user, token }) {
         }
     }, [user, token, level]);
 
-    const endGame = useCallback((completedSuccessfully, caughtByDarkness = false) => {
+    const endGame = useCallback((completedText, caughtByDarkness = false) => {
         setGameStatus((currentStatus) => {
             if (currentStatus === 'finished') return currentStatus;
 
@@ -78,25 +79,34 @@ export default function Game({ user, token }) {
             const finalWPM = minutes > 0 ? Math.round((correctChars / 5) / minutes) : 0;
             const finalAccuracy = finalInput.length > 0 ? Math.round((correctChars / finalInput.length) * 100) : 0;
             
-            let message = "Time's Up!";
-            if(caughtByDarkness) {
+            let message = "";
+            let wasSuccessful = false;
+
+            if (caughtByDarkness) {
                 message = "Caught by the darkness!";
-            } else if (completedSuccessfully) {
-                message = "Level Complete!";
+            } else if (completedText) {
+                if (finalAccuracy < REQUIRED_ACCURACY) {
+                    message = "Improve Accuracy";
+                } else {
+                    message = "Level Complete!";
+                    wasSuccessful = true;
+                }
+            } else {
+                message = "Time's Up!";
             }
 
             const stats = {
                 wpm: finalWPM,
                 accuracy: finalAccuracy,
                 time: timeElapsed,
-                completed: completedSuccessfully,
+                completed: wasSuccessful,
                 message: message
             };
 
             setFinalStats(stats);
             saveGameSession(stats);
 
-            if (completedSuccessfully && finalAccuracy >= 85) {
+            if (wasSuccessful) {
                 const currentLevelIdx = levelIndex[level];
                 if (currentLevelIdx < levels.length - 1) {
                     const nextLevel = levels[currentLevelIdx + 1];
@@ -126,7 +136,6 @@ export default function Game({ user, token }) {
         startGame('Beginner');
     }, [startGame]);
 
-    // Timer logic
     useEffect(() => {
         if (gameStatus === 'started') {
             timerIntervalRef.current = setInterval(() => {
@@ -160,21 +169,20 @@ export default function Game({ user, token }) {
         const prev = userInputRef.current;
         let currentStatus = 'idle';
 
-        if (value.length > prev.length) { // Forward typing
+        if (value.length > prev.length) {
             const idx = prev.length;
             currentStatus = (textToType[idx] === value[idx]) ? 'correct' : 'incorrect';
-        } else if (value.length < prev.length) { // Backspacing
+        } else if (value.length < prev.length) {
             currentStatus = 'backspacing';
         }
 
         setTypingStatus(currentStatus);
         setUserInput(value);
 
-        // Set a timeout to return to idle ONLY if not incorrect
         if (currentStatus === 'correct' || currentStatus === 'backspacing') {
             idleTimeoutRef.current = setTimeout(() => {
                 setTypingStatus('idle');
-            }, 2000); // 2-second grace period
+            }, 2000);
         }
 
         if (value.length === textToType.length) {
@@ -198,7 +206,7 @@ export default function Game({ user, token }) {
     };
     
     const progress = textToType.length > 0 ? Math.max(0, Math.min(1, userInput.length / textToType.length)) : 0;
-    const canAdvance = finalStats?.completed && finalStats?.accuracy >= 85 && levelIndex[level] < levels.length - 1;
+    const canAdvance = finalStats?.completed && finalStats?.accuracy >= REQUIRED_ACCURACY && levelIndex[level] < levels.length - 1;
 
     return (
         <div className="game-container storyboard">
@@ -222,4 +230,3 @@ export default function Game({ user, token }) {
         </div>
     );
 }
-
