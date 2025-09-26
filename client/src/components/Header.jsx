@@ -31,10 +31,10 @@ export default function Header({ currentPage, setPage, isLoggedIn, handleLogout 
                     </button>
                 )}
                  <button
-                    className={currentPage === 'about' ? 'active' : ''}
-                    onClick={() => setPage('about')}
+                    className={currentPage === 'rules' ? 'active' : ''}
+                    onClick={() => setPage('rules')}
                 >
-                    About
+                    Rules
                 </button>
             </nav>
 

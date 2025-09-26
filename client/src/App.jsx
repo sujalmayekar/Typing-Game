@@ -5,7 +5,7 @@ import History from './pages/History';
 import Header from './components/Header';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
-import About from './pages/About';
+import Rules from './pages/Rules';
 import Profile from './pages/Profile';
 import './App.css';
 
@@ -54,8 +54,8 @@ export default function App() {
             case 'profile':
                 // Pass user, token and logout handler to profile page
                 return <Profile user={user} token={token} handleLogout={handleLogout} />;
-            case 'about':
-                return <About />;
+            case 'rules':
+                return <Rules />;
             case 'game':
             default:
                 // Pass user and token to game page
