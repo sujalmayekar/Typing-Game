@@ -8,9 +8,9 @@ class GameScene extends Phaser.Scene {
         this.background = null;
         this.midground = null;
         this.foreground = null;
-        
+
         this.progress = 0;
-        this.typingStatus = 'idle'; 
+        this.typingStatus = 'idle';
         this.gameStatus = 'waiting';
         this.isFinished = false;
 
@@ -20,15 +20,19 @@ class GameScene extends Phaser.Scene {
         // Simplified motion model
         this.currentSpeed = 0;
         this.targetSpeed = 0;
-        this.maxSpeed = 300; 
+        this.maxSpeed = 300;
         this.acceleration = 600;
         this.deceleration = 1200;
+
+        // Animation linger for smoothness
+        this.runLingerTimer = 0;
+        this.runLingerDuration = 0.18; // seconds to linger in run after movement stops
 
         // Darkness properties
         this.darkness = null;
         this.darknessX = 0;
         this.darknessSpeed = 30; // Base speed, will be updated by setLevelConfig
-        this.darknessBuffer = 5 // Safety distance from player
+        this.darknessBuffer = 5; // Safety distance from player
         this.darknessActive = false;
         this.darknessStartDelay = 1.5; // seconds, will be updated by setLevelConfig
         this._darknessStartTime = 0;
@@ -140,7 +144,8 @@ class GameScene extends Phaser.Scene {
         this.typingStatus = 'idle';
         this.currentSpeed = 0;
         this.targetSpeed = 0;
-        
+        this.runLingerTimer = 0;
+
         this.resetDarkness();
 
         if (this.player) {
@@ -202,15 +207,15 @@ class GameScene extends Phaser.Scene {
         } else {
             this.targetSpeed = 0;
         }
-        
+
         if (this.currentSpeed < this.targetSpeed) {
             this.currentSpeed = Math.min(this.targetSpeed, this.currentSpeed + this.acceleration * dt);
         } else if (this.currentSpeed > this.targetSpeed) {
             this.currentSpeed = Math.max(this.targetSpeed, this.currentSpeed - this.deceleration * dt);
         }
-        
+
         const prevX = this.player.x;
-        
+
         let direction = 0;
         if (shouldRunForward) {
             direction = 1;
@@ -228,17 +233,23 @@ class GameScene extends Phaser.Scene {
         }
 
         const moved = this.player.x - prevX;
-        
+
         this.updateDarkness(dt, moved);
 
-
+        // --- Animation Linger Logic ---
         if (Math.abs(moved) > 0.1) {
+            this.runLingerTimer = this.runLingerDuration;
             this.player.play('run', true);
             this.player.setFlipX(moved < 0);
         } else {
-            this.player.anims.stop();
-            this.player.setTexture('player-idle', 0);
-            this.player.setFlipX(false);
+            if (this.runLingerTimer > 0) {
+                this.runLingerTimer -= dt;
+                this.player.play('run', true);
+            } else {
+                this.player.anims.stop();
+                this.player.setTexture('player-idle', 0);
+                this.player.setFlipX(false);
+            }
         }
 
         if (this.player.anims.isPlaying) {
@@ -246,10 +257,12 @@ class GameScene extends Phaser.Scene {
             const animSpeed = Phaser.Math.Clamp(currentMoveSpeed / this.maxSpeed, 0.8, 1.5);
             this.player.anims.timeScale = animSpeed;
         }
-       
-        this.background.tilePositionX += moved * 0.2;
-        this.midground.tilePositionX += moved * 0.5;
-        this.foreground.tilePositionX += moved * 1.0;
+
+    // Make background parallax sync and feel faster for more natural running
+    // Foreground stays the same, midground is a bit faster, background is noticeably faster
+    this.background.tilePositionX += moved * 0.45;
+    this.midground.tilePositionX += moved * 0.7;
+    this.foreground.tilePositionX += moved * 1.0;
     }
     
     updateDarkness(dt, moved) {
